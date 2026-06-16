@@ -12,6 +12,7 @@ import sung.eco_analysis.config.ApiProperties;
 import sung.eco_analysis.dto.NaverNewsApiResponse;
 import sung.eco_analysis.dto.NaverNewsItem;
 
+import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
@@ -32,6 +33,8 @@ public class NaverNewsService {
     public List<NaverNewsItem> fetchExchangeRateNews(int display) {
         String encodedQuery = URLEncoder.encode("달러 환율", StandardCharsets.UTF_8);
         String url = String.format("%s?query=%s&display=%d&sort=date", NAVER_NEWS_URL, encodedQuery, display);
+        // 이미 인코딩된 문자열을 URI 객체로 넘겨 RestTemplate의 이중 인코딩 방지
+        URI uri = URI.create(url);
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Naver-Client-Id", apiProperties.getNaver().getClientId());
@@ -40,7 +43,7 @@ public class NaverNewsService {
         try {
             HttpEntity<Void> entity = new HttpEntity<>(headers);
             ResponseEntity<NaverNewsApiResponse> response = restTemplate.exchange(
-                    url, HttpMethod.GET, entity, NaverNewsApiResponse.class
+                    uri, HttpMethod.GET, entity, NaverNewsApiResponse.class
             );
             if (response.getBody() != null && response.getBody().getItems() != null) {
                 List<NaverNewsItem> items = response.getBody().getItems();
