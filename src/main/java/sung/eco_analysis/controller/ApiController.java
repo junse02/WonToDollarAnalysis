@@ -5,7 +5,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import sung.eco_analysis.dto.AnalysisSummary;
 import sung.eco_analysis.dto.NaverNewsItem;
+import sung.eco_analysis.dto.RateChangeEvent;
 import sung.eco_analysis.entity.RateHistory;
 import sung.eco_analysis.service.ExchangeRateService;
 import sung.eco_analysis.service.KeywordAnalysisService;
@@ -37,7 +39,7 @@ public class ApiController {
 
     @GetMapping("/rate/history")
     public ResponseEntity<Map<String, Object>> getRateHistory() {
-        List<RateHistory> history = exchangeRateService.getRecentHistory(7);
+        List<RateHistory> history = exchangeRateService.getRecentHistory(30);
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("MM/dd HH:mm");
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("labels", history.stream().map(h -> h.getRecordedAt().format(fmt)).collect(Collectors.toList()));
@@ -47,14 +49,22 @@ public class ApiController {
 
     @GetMapping("/analysis")
     public ResponseEntity<Map<String, Object>> getAnalysis() {
-        List<NaverNewsItem> news = naverNewsService.fetchExchangeRateNews(50);
+        List<NaverNewsItem> news = naverNewsService.fetchExchangeRateNews(100);
         Map<String, Integer> keywords = keywordAnalysisService.analyzeKeywords(news);
         String summary = keywordAnalysisService.generateSummary(keywords, null, null);
+
+        List<RateHistory> history = exchangeRateService.getRecentHistory(30);
+        List<RateChangeEvent> events = keywordAnalysisService.analyzeRateChangeEvents(history, news);
+        AnalysisSummary analysis = keywordAnalysisService.buildAnalysisSummary(keywords, events);
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("keywords", keywords);
         result.put("summary", summary);
         result.put("newsCount", news.size());
+        result.put("pressureIndex", analysis.getPressureIndex());
+        result.put("pressureLabel", analysis.getPressureLabel());
+        result.put("accuracyPercent", analysis.getAccuracyPercent());
+        result.put("changeEvents", events);
         return ResponseEntity.ok(result);
     }
 }

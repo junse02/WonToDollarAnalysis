@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import sung.eco_analysis.dto.AnalysisSummary;
 import sung.eco_analysis.dto.NaverNewsItem;
 import sung.eco_analysis.dto.RateChangeEvent;
 import sung.eco_analysis.entity.RateHistory;
@@ -57,6 +58,9 @@ public class WebController {
         // 날짜별 환율 변동 원인 분석
         List<RateChangeEvent> changeEvents = keywordAnalysisService.analyzeRateChangeEvents(history, allNews);
 
+        // 압력 지수 + 적중률 종합
+        AnalysisSummary analysisSummary = keywordAnalysisService.buildAnalysisSummary(keywords, changeEvents);
+
         model.addAttribute("currentRate", currentRate);
         model.addAttribute("newsCount", allNews.size());
         model.addAttribute("topKeyword", topKeyword);
@@ -67,6 +71,7 @@ public class WebController {
         model.addAttribute("kwLabels", kwLabels);
         model.addAttribute("kwValues", kwValues);
         model.addAttribute("changeEvents", changeEvents);
+        model.addAttribute("analysis", analysisSummary);
         model.addAttribute("lastUpdated", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
 
         return "index";

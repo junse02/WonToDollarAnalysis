@@ -75,6 +75,67 @@
         </div>
     </div>
 
+    <!-- 달러 강세 압력 지수 + 분석 적중률 -->
+    <div class="row g-3 mb-4" th:if="${analysis != null}">
+        <div class="col-md-8">
+            <div class="card h-100">
+                <div class="card-header">
+                    <i class="bi bi-speedometer2 me-2"></i>달러 강세 압력 지수
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-baseline mb-1">
+                        <span class="text-success small fw-bold">◀ 원화 강세 (달러 약세)</span>
+                        <span class="pressure-value"
+                              th:classappend="${analysis.pressureIndex > 10} ? 'text-danger' : (${analysis.pressureIndex < -10} ? 'text-success' : 'text-secondary')"
+                              th:text="${analysis.pressureIndex > 0} ? '+' + ${analysis.pressureIndex} : ${analysis.pressureIndex}">0</span>
+                        <span class="text-danger small fw-bold">달러 강세 (원화 약세) ▶</span>
+                    </div>
+                    <div class="gauge-track">
+                        <div class="gauge-center"></div>
+                        <div class="gauge-marker" th:style="'left:' + ${analysis.gaugePercent} + '%;'"></div>
+                    </div>
+                    <div class="text-center mt-3">
+                        <span class="badge fs-6 px-3 py-2"
+                              th:classappend="${analysis.pressureIndex > 10} ? 'bg-danger' : (${analysis.pressureIndex < -10} ? 'bg-success' : 'bg-secondary')"
+                              th:text="${analysis.pressureLabel}">라벨</span>
+                    </div>
+                    <p class="text-muted small text-center mt-2 mb-0">
+                        뉴스 키워드에 시장 영향 가중치를 적용해 산출 (-100 ~ +100)
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 accuracy-card">
+                <div class="card-header">
+                    <i class="bi bi-bullseye me-2"></i>분석 적중률
+                </div>
+                <div class="card-body text-center d-flex flex-column justify-content-center">
+                    <!-- 평가 가능한 데이터가 있을 때 -->
+                    <div th:if="${analysis.evaluatedCount > 0}">
+                        <div class="accuracy-number" th:text="${analysis.accuracyPercent} + '%'">-</div>
+                        <div class="text-muted small mt-1">
+                            주요 변동 <span th:text="${analysis.evaluatedCount}">0</span>일 중
+                            <span class="text-primary fw-bold" th:text="${analysis.matchedCount}">0</span>일 방향 일치
+                        </div>
+                        <div class="text-muted mt-2" style="font-size:0.75rem;">
+                            키워드가 예측한 방향과 실제 환율 변동 방향의 일치 비율
+                        </div>
+                    </div>
+                    <!-- 아직 누적 데이터가 없을 때 -->
+                    <div th:if="${analysis.evaluatedCount == 0}">
+                        <div class="accuracy-pending"><i class="bi bi-hourglass-split"></i></div>
+                        <div class="fw-bold mt-2">데이터 누적 중</div>
+                        <div class="text-muted mt-2" style="font-size:0.75rem; line-height:1.5;">
+                            네이버 API는 최신 뉴스만 제공해 과거 변동일은 소급 분석이 어렵습니다.
+                            앱이 매일 뉴스 스냅샷을 저장하면 적중률이 산출됩니다.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 환율 추이 차트 -->
     <div class="row g-3 mb-4">
         <div class="col-12">
@@ -174,6 +235,9 @@
                                     <span class="badge"
                                           th:classappend="${event.rateUp} ? 'bg-danger' : 'bg-success'"
                                           th:text="${event.topKeyword}">키워드</span>
+                                    <span th:if="${event.matched != null}" class="badge"
+                                          th:classappend="${event.matched} ? 'bg-primary' : 'bg-secondary'"
+                                          th:text="${event.matched} ? '✓ 키워드 방향 일치' : '✗ 방향 불일치'">일치</span>
                                 </div>
                                 <p class="event-analysis mb-2" th:text="${event.analysis}">분석</p>
                                 <div th:if="${!#lists.isEmpty(event.relatedNewsTitles)}" class="event-news">

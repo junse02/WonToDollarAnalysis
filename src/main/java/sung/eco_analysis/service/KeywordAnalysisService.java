@@ -1,6 +1,7 @@
 package sung.eco_analysis.service;
 
 import org.springframework.stereotype.Service;
+import sung.eco_analysis.dto.AnalysisSummary;
 import sung.eco_analysis.dto.NaverNewsItem;
 import sung.eco_analysis.dto.RateChangeEvent;
 import sung.eco_analysis.entity.RateHistory;
@@ -57,6 +58,20 @@ public class KeywordAnalysisService {
     private static final Set<String> RATE_DOWN_FACTORS = new HashSet<>(Arrays.asList(
             "연준 완화·금리 인하", "달러 약세", "무역·수출 호조", "외국인 자금 유입"
     ));
+
+    // 카테고리별 시장 영향 가중치 (금리 > 환율 직접 언급 > 무역/수급 > 기타)
+    private static final Map<String, Double> FACTOR_WEIGHTS = new HashMap<>();
+    static {
+        FACTOR_WEIGHTS.put("연준 긴축·금리 인상", 3.0);
+        FACTOR_WEIGHTS.put("연준 완화·금리 인하", 3.0);
+        FACTOR_WEIGHTS.put("달러 강세", 2.0);
+        FACTOR_WEIGHTS.put("달러 약세", 2.0);
+        FACTOR_WEIGHTS.put("지정학 리스크", 2.0);
+        FACTOR_WEIGHTS.put("무역·수출 호조", 2.0);
+        FACTOR_WEIGHTS.put("무역·수입 압박", 1.5);
+        FACTOR_WEIGHTS.put("경기침체 우려", 1.5);
+        FACTOR_WEIGHTS.put("외국인 자금 유입", 1.5);
+    }
 
     public Map<String, Integer> analyzeKeywords(List<NaverNewsItem> newsItems) {
         Map<String, Integer> counts = new LinkedHashMap<>();
@@ -138,6 +153,9 @@ public class KeywordAnalysisService {
 
             String analysis = generateEventAnalysis(changePercent, eventKeywords, relatedNews.isEmpty());
 
+            // 키워드가 예측한 방향과 실제 변동 방향 일치 여부
+            Boolean matched = predictMatch(eventKeywords, changeAmount > 0);
+
             events.add(new RateChangeEvent(
                     today.format(DateTimeFormatter.ofPattern("yyyy년 MM월 dd일")),
                     currentRate,
@@ -146,13 +164,77 @@ public class KeywordAnalysisService {
                     changeAmount > 0,
                     newsTitles,
                     topKeyword,
-                    analysis
+                    analysis,
+                    matched
             ));
         }
 
         // 절댓값 변동 큰 순 정렬 후 상위 10개
         events.sort((a, b) -> Double.compare(Math.abs(b.getChangePercent()), Math.abs(a.getChangePercent())));
         return events.stream().limit(10).collect(Collectors.toList());
+    }
+
+    // ── 압력 지수 + 적중률 종합 ─────────────────────────────────────────────
+
+    public AnalysisSummary buildAnalysisSummary(
+            Map<String, Integer> keywords, List<RateChangeEvent> events) {
+
+        // 1) 달러 강세 압력 지수 (가중 합산)
+        double up = 0, down = 0;
+        for (String cat : RATE_UP_FACTORS) {
+            up += keywords.getOrDefault(cat, 0) * FACTOR_WEIGHTS.getOrDefault(cat, 1.0);
+        }
+        for (String cat : RATE_DOWN_FACTORS) {
+            down += keywords.getOrDefault(cat, 0) * FACTOR_WEIGHTS.getOrDefault(cat, 1.0);
+        }
+        double total = up + down;
+        int index = (total == 0) ? 0 : (int) Math.round((up - down) / total * 100);
+        int gauge = (index + 100) / 2;  // -100~100 -> 0~100
+        String label = pressureLabel(index);
+
+        // 2) 적중률 (예측 가능했던 변동일 중 방향 일치 비율)
+        int evaluated = 0, matched = 0;
+        for (RateChangeEvent e : events) {
+            if (e.getMatched() != null) {
+                evaluated++;
+                if (e.getMatched()) matched++;
+            }
+        }
+        int accuracy = (evaluated == 0) ? 0 : (int) Math.round((double) matched / evaluated * 100);
+
+        String summaryText;
+        if (evaluated == 0) {
+            summaryText = String.format(
+                    "달러 강세 압력 지수 %+d (%s). 적중률은 일별 뉴스 스냅샷이 누적되면 산출됩니다.",
+                    index, label);
+        } else {
+            summaryText = String.format(
+                    "달러 강세 압력 지수 %+d (%s). 최근 주요 변동 %d일 중 %d일이 뉴스 키워드 방향과 일치했습니다 (적중률 %d%%).",
+                    index, label, evaluated, matched, accuracy);
+        }
+
+        return new AnalysisSummary(index, label, gauge, accuracy, matched, evaluated, summaryText);
+    }
+
+    private String pressureLabel(int index) {
+        if (index >= 40) return "강한 달러 강세 압력 (원화 약세 심화)";
+        if (index >= 10) return "달러 강세 우위 (원화 약세)";
+        if (index > -10) return "중립 / 혼조";
+        if (index > -40) return "달러 약세 우위 (원화 강세)";
+        return "강한 달러 약세 압력 (원화 강세 심화)";
+    }
+
+    // 뉴스에서 가장 우세한 '방향성 있는' 카테고리로 변동 방향 예측 후 실제와 비교
+    private Boolean predictMatch(Map<String, Integer> keywords, boolean actualUp) {
+        String dirCat = keywords.entrySet().stream()
+                .filter(e -> e.getValue() > 0)
+                .filter(e -> RATE_UP_FACTORS.contains(e.getKey()) || RATE_DOWN_FACTORS.contains(e.getKey()))
+                .findFirst()
+                .map(Map.Entry::getKey)
+                .orElse(null);
+        if (dirCat == null) return null;  // 예측 불가
+        boolean predictedUp = RATE_UP_FACTORS.contains(dirCat);
+        return predictedUp == actualUp;
     }
 
     private Map<LocalDate, List<NaverNewsItem>> groupNewsByDate(List<NaverNewsItem> news) {

@@ -15,4 +15,6 @@ public class RateChangeEvent {
     private List<String> relatedNewsTitles;
     private String topKeyword;
     private String analysis;
+    // 키워드가 예측한 방향과 실제 변동 방향 일치 여부 (예측 불가 시 null)
+    private Boolean matched;
 }

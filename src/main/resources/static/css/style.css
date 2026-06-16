@@ -126,6 +126,54 @@ body {
     margin-bottom: 4px;
 }
 
+/* Pressure Gauge */
+.pressure-value {
+    font-size: 1.6rem;
+    font-weight: 800;
+}
+.gauge-track {
+    position: relative;
+    height: 14px;
+    border-radius: 7px;
+    background: linear-gradient(to right,
+        #22c55e 0%, #86efac 35%, #e2e8f0 50%, #fca5a5 65%, #ef4444 100%);
+    margin: 0.5rem 0;
+}
+.gauge-center {
+    position: absolute;
+    left: 50%;
+    top: -3px;
+    width: 2px;
+    height: 20px;
+    background: #94a3b8;
+    transform: translateX(-50%);
+}
+.gauge-marker {
+    position: absolute;
+    top: 50%;
+    width: 18px;
+    height: 18px;
+    background: #1e293b;
+    border: 3px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    transform: translate(-50%, -50%);
+    transition: left 0.4s ease;
+}
+
+/* Accuracy Card */
+.accuracy-card { background: linear-gradient(135deg, #eff6ff 0%, #e0e7ff 100%); }
+.accuracy-number {
+    font-size: 2.8rem;
+    font-weight: 800;
+    color: var(--primary);
+    line-height: 1;
+}
+.accuracy-pending {
+    font-size: 2.2rem;
+    color: #94a3b8;
+}
+
 /* Event Timeline */
 .event-timeline { padding: 0.5rem 0; }
 
