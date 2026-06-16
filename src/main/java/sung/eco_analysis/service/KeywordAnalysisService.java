@@ -2,13 +2,18 @@ package sung.eco_analysis.service;
 
 import org.springframework.stereotype.Service;
 import sung.eco_analysis.dto.NaverNewsItem;
+import sung.eco_analysis.dto.RateChangeEvent;
+import sung.eco_analysis.entity.RateHistory;
 
+import java.time.LocalDate;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class KeywordAnalysisService {
 
-    // 카테고리별 키워드 정의
     private static final Map<String, List<String>> KEYWORD_CATEGORIES = new LinkedHashMap<>();
 
     static {
@@ -22,10 +27,10 @@ public class KeywordAnalysisService {
                 "인플레이션", "물가상승", "물가 급등", "CPI", "PCE", "인플레", "소비자물가"
         ));
         KEYWORD_CATEGORIES.put("무역·수출 호조", Arrays.asList(
-                "수출 증가", "무역흑자", "경상수지 흑자", "수출 호조", "경상흑자", "수출 증가"
+                "수출 증가", "무역흑자", "경상수지 흑자", "수출 호조", "경상흑자"
         ));
         KEYWORD_CATEGORIES.put("무역·수입 압박", Arrays.asList(
-                "무역적자", "수입 증가", "경상수지 적자", "수출 감소", "경상적자", "무역 불균형"
+                "무역적자", "수입 증가", "경상수지 적자", "수출 감소", "경상적자"
         ));
         KEYWORD_CATEGORIES.put("달러 강세", Arrays.asList(
                 "달러 강세", "강달러", "달러 급등", "달러화 강세", "달러 상승"
@@ -44,11 +49,18 @@ public class KeywordAnalysisService {
         ));
     }
 
+    // 달러 강세 요인 카테고리
+    private static final Set<String> RATE_UP_FACTORS = new HashSet<>(Arrays.asList(
+            "연준 긴축·금리 인상", "달러 강세", "지정학 리스크", "경기침체 우려", "무역·수입 압박"
+    ));
+    // 달러 약세 요인 카테고리
+    private static final Set<String> RATE_DOWN_FACTORS = new HashSet<>(Arrays.asList(
+            "연준 완화·금리 인하", "달러 약세", "무역·수출 호조", "외국인 자금 유입"
+    ));
+
     public Map<String, Integer> analyzeKeywords(List<NaverNewsItem> newsItems) {
         Map<String, Integer> counts = new LinkedHashMap<>();
-        for (String category : KEYWORD_CATEGORIES.keySet()) {
-            counts.put(category, 0);
-        }
+        KEYWORD_CATEGORIES.keySet().forEach(k -> counts.put(k, 0));
 
         for (NaverNewsItem item : newsItems) {
             String text = (item.getCleanTitle() + " " + item.getCleanDescription()).toLowerCase();
@@ -61,7 +73,6 @@ public class KeywordAnalysisService {
                 }
             }
         }
-
         return sortByValueDesc(counts);
     }
 
@@ -74,27 +85,129 @@ public class KeywordAnalysisService {
     }
 
     public String generateSummary(Map<String, Integer> keywords, Double currentRate, List<?> history) {
-        int rateUp = keywords.getOrDefault("연준 긴축·금리 인상", 0)
-                + keywords.getOrDefault("달러 강세", 0)
-                + keywords.getOrDefault("지정학 리스크", 0)
-                + keywords.getOrDefault("무역·수입 압박", 0);
-
-        int rateDown = keywords.getOrDefault("연준 완화·금리 인하", 0)
-                + keywords.getOrDefault("달러 약세", 0)
-                + keywords.getOrDefault("무역·수출 호조", 0)
-                + keywords.getOrDefault("외국인 자금 유입", 0);
+        int rateUp = RATE_UP_FACTORS.stream().mapToInt(k -> keywords.getOrDefault(k, 0)).sum();
+        int rateDown = RATE_DOWN_FACTORS.stream().mapToInt(k -> keywords.getOrDefault(k, 0)).sum();
 
         String trend;
-        if (rateUp > rateDown) {
-            trend = "달러 강세(원화 약세) 요인이 우세합니다.";
-        } else if (rateDown > rateUp) {
-            trend = "달러 약세(원화 강세) 요인이 우세합니다.";
-        } else {
-            trend = "방향성이 혼재되어 있습니다.";
+        if (rateUp > rateDown) trend = "달러 강세(원화 약세) 요인이 우세합니다.";
+        else if (rateDown > rateUp) trend = "달러 약세(원화 강세) 요인이 우세합니다.";
+        else trend = "방향성이 혼재되어 있습니다.";
+
+        return String.format("최근 뉴스 분석 결과, '%s' 관련 기사가 가장 많습니다. %s",
+                getTopKeyword(keywords), trend);
+    }
+
+    // ── 날짜별 환율 변동 원인 분석 ──────────────────────────────────────────
+
+    public List<RateChangeEvent> analyzeRateChangeEvents(
+            List<RateHistory> history, List<NaverNewsItem> allNews) {
+
+        if (history.size() < 2) return Collections.emptyList();
+
+        // 날짜별 대표 환율 (마지막 기록 사용)
+        Map<LocalDate, Double> dailyRates = new LinkedHashMap<>();
+        history.forEach(h -> dailyRates.put(h.getRecordedAt().toLocalDate(), h.getRate()));
+
+        // 날짜별 뉴스 그룹핑
+        Map<LocalDate, List<NaverNewsItem>> newsByDate = groupNewsByDate(allNews);
+
+        List<LocalDate> dates = new ArrayList<>(dailyRates.keySet());
+
+        List<RateChangeEvent> events = new ArrayList<>();
+        for (int i = 1; i < dates.size(); i++) {
+            LocalDate today = dates.get(i);
+            LocalDate yesterday = dates.get(i - 1);
+            double currentRate = dailyRates.get(today);
+            double prevRate = dailyRates.get(yesterday);
+
+            double changeAmount = currentRate - prevRate;
+            double changePercent = (changeAmount / prevRate) * 100;
+
+            // 0.2% 미만 변동은 제외 (노이즈)
+            if (Math.abs(changePercent) < 0.2) continue;
+
+            // 해당 날짜 ±1일 뉴스 수집
+            List<NaverNewsItem> relatedNews = getNewsAroundDate(newsByDate, today);
+            Map<String, Integer> eventKeywords = analyzeKeywords(relatedNews);
+            String topKeyword = getTopKeyword(eventKeywords);
+
+            List<String> newsTitles = relatedNews.stream()
+                    .limit(3)
+                    .map(NaverNewsItem::getCleanTitle)
+                    .collect(Collectors.toList());
+
+            String analysis = generateEventAnalysis(changePercent, eventKeywords, relatedNews.isEmpty());
+
+            events.add(new RateChangeEvent(
+                    today.format(DateTimeFormatter.ofPattern("yyyy년 MM월 dd일")),
+                    currentRate,
+                    changeAmount,
+                    changePercent,
+                    changeAmount > 0,
+                    newsTitles,
+                    topKeyword,
+                    analysis
+            ));
         }
 
-        String topKeyword = getTopKeyword(keywords);
-        return String.format("최근 뉴스 분석 결과, '%s' 관련 기사가 가장 많습니다. %s", topKeyword, trend);
+        // 절댓값 변동 큰 순 정렬 후 상위 10개
+        events.sort((a, b) -> Double.compare(Math.abs(b.getChangePercent()), Math.abs(a.getChangePercent())));
+        return events.stream().limit(10).collect(Collectors.toList());
+    }
+
+    private Map<LocalDate, List<NaverNewsItem>> groupNewsByDate(List<NaverNewsItem> news) {
+        Map<LocalDate, List<NaverNewsItem>> map = new HashMap<>();
+        for (NaverNewsItem item : news) {
+            ZonedDateTime date = item.getParsedDate();
+            if (date != null) {
+                map.computeIfAbsent(date.toLocalDate(), k -> new ArrayList<>()).add(item);
+            }
+        }
+        return map;
+    }
+
+    private List<NaverNewsItem> getNewsAroundDate(
+            Map<LocalDate, List<NaverNewsItem>> newsByDate, LocalDate date) {
+        List<NaverNewsItem> result = new ArrayList<>();
+        for (int offset = -1; offset <= 1; offset++) {
+            List<NaverNewsItem> dayNews = newsByDate.get(date.plusDays(offset));
+            if (dayNews != null) result.addAll(dayNews);
+        }
+        return result;
+    }
+
+    private String generateEventAnalysis(double changePercent, Map<String, Integer> keywords, boolean noNews) {
+        if (noNews) {
+            return changePercent > 0
+                    ? "관련 뉴스를 찾지 못했습니다. 글로벌 달러 강세 흐름이 영향을 준 것으로 보입니다."
+                    : "관련 뉴스를 찾지 못했습니다. 글로벌 달러 약세 흐름이 영향을 준 것으로 보입니다.";
+        }
+
+        String topCategory = keywords.entrySet().stream()
+                .filter(e -> e.getValue() > 0)
+                .findFirst()
+                .map(Map.Entry::getKey)
+                .orElse(null);
+
+        if (topCategory == null) {
+            return changePercent > 0
+                    ? "뚜렷한 단일 원인 없이 달러 강세 흐름이 나타났습니다."
+                    : "뚜렷한 단일 원인 없이 달러 약세 흐름이 나타났습니다.";
+        }
+
+        boolean directionMatch = (changePercent > 0 && RATE_UP_FACTORS.contains(topCategory))
+                || (changePercent < 0 && RATE_DOWN_FACTORS.contains(topCategory));
+
+        String directionStr = changePercent > 0
+                ? String.format("달러가 %.2f%% 상승(원화 약세)", changePercent)
+                : String.format("달러가 %.2f%% 하락(원화 강세)", Math.abs(changePercent));
+
+        if (directionMatch) {
+            return String.format("%s했습니다. '%s' 관련 보도가 주요 원인으로 분석됩니다.", directionStr, topCategory);
+        } else {
+            return String.format("%s했습니다. '%s' 보도가 있었으나 다른 요인이 복합적으로 작용한 것으로 보입니다.",
+                    directionStr, topCategory);
+        }
     }
 
     private Map<String, Integer> sortByValueDesc(Map<String, Integer> map) {

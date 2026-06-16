@@ -126,6 +126,50 @@ body {
     margin-bottom: 4px;
 }
 
+/* Event Timeline */
+.event-timeline { padding: 0.5rem 0; }
+
+.event-item {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+}
+.event-item:last-child { border-bottom: none; }
+.event-item:hover { background: #f8fafc; }
+
+.event-indicator {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    font-weight: 700;
+    margin-top: 2px;
+}
+.event-up .event-indicator { background: #fee2e2; color: #dc2626; }
+.event-down .event-indicator { background: #dcfce7; color: #16a34a; }
+
+.event-content { flex: 1; min-width: 0; }
+
+.event-date { font-weight: 600; color: var(--text-primary); font-size: 0.9rem; }
+.event-rate { color: var(--primary); font-weight: 700; font-size: 1rem; }
+.event-change { font-weight: 600; font-size: 0.9rem; }
+.event-analysis { font-size: 0.88rem; color: #374151; line-height: 1.6; margin-bottom: 0.5rem; }
+
+.event-news { background: #f8fafc; border-radius: 8px; padding: 0.6rem 0.8rem; }
+.event-news-item {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 /* Loading spinner */
 .spinner-overlay {
     display: none;

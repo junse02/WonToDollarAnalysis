@@ -5,6 +5,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import sung.eco_analysis.dto.NaverNewsItem;
+import sung.eco_analysis.dto.RateChangeEvent;
 import sung.eco_analysis.entity.RateHistory;
 import sung.eco_analysis.service.ExchangeRateService;
 import sung.eco_analysis.service.KeywordAnalysisService;
@@ -29,8 +30,8 @@ public class WebController {
         // 현재 환율
         Double currentRate = exchangeRateService.fetchCurrentUsdKrw();
 
-        // 뉴스 조회 및 키워드 분석
-        List<NaverNewsItem> allNews = naverNewsService.fetchExchangeRateNews(50);
+        // 뉴스 조회 및 키워드 분석 (100건 - 날짜별 매핑용)
+        List<NaverNewsItem> allNews = naverNewsService.fetchExchangeRateNews(100);
         Map<String, Integer> keywords = keywordAnalysisService.analyzeKeywords(allNews);
         String topKeyword = keywordAnalysisService.getTopKeyword(keywords);
 
@@ -53,6 +54,9 @@ public class WebController {
         // 분석 요약
         String summary = keywordAnalysisService.generateSummary(keywords, currentRate, history);
 
+        // 날짜별 환율 변동 원인 분석
+        List<RateChangeEvent> changeEvents = keywordAnalysisService.analyzeRateChangeEvents(history, allNews);
+
         model.addAttribute("currentRate", currentRate);
         model.addAttribute("newsCount", allNews.size());
         model.addAttribute("topKeyword", topKeyword);
@@ -62,6 +66,7 @@ public class WebController {
         model.addAttribute("chartData", chartData);
         model.addAttribute("kwLabels", kwLabels);
         model.addAttribute("kwValues", kwValues);
+        model.addAttribute("changeEvents", changeEvents);
         model.addAttribute("lastUpdated", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
 
         return "index";
