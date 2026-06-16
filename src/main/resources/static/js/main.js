@@ -1,22 +1,26 @@
 // 환율 추이 차트
-if (CHART_DATA.length > 0) {
-    const rateCtx = document.getElementById('rateChart').getContext('2d');
+let rateChartInstance = null;
 
-    const gradient = rateCtx.createLinearGradient(0, 0, 0, 300);
+function buildRateChart(labels, data) {
+    const canvas = document.getElementById('rateChart');
+    if (!canvas) return null;
+    const ctx = canvas.getContext('2d');
+
+    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
     gradient.addColorStop(0, 'rgba(37, 99, 235, 0.25)');
     gradient.addColorStop(1, 'rgba(37, 99, 235, 0.01)');
 
-    new Chart(rateCtx, {
+    return new Chart(ctx, {
         type: 'line',
         data: {
-            labels: CHART_LABELS,
+            labels: labels,
             datasets: [{
                 label: 'USD/KRW',
-                data: CHART_DATA,
+                data: data,
                 borderColor: '#2563eb',
                 backgroundColor: gradient,
                 borderWidth: 2.5,
-                pointRadius: 4,
+                pointRadius: data.length > 45 ? 2 : 4,
                 pointBackgroundColor: '#2563eb',
                 pointHoverRadius: 6,
                 fill: true,
@@ -49,6 +53,31 @@ if (CHART_DATA.length > 0) {
             }
         }
     });
+}
+
+if (CHART_DATA.length > 0) {
+    rateChartInstance = buildRateChart(CHART_LABELS, CHART_DATA);
+}
+
+// 기간 버튼: 페이지 리로드 없이 차트만 갱신
+function changePeriod(days, btn) {
+    document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+
+    fetch('/api/rate/history?days=' + days)
+        .then(r => r.json())
+        .then(d => {
+            if (!d.data || d.data.length === 0) return;
+            if (rateChartInstance) {
+                rateChartInstance.data.labels = d.labels;
+                rateChartInstance.data.datasets[0].data = d.data;
+                rateChartInstance.data.datasets[0].pointRadius = d.data.length > 45 ? 2 : 4;
+                rateChartInstance.update();
+            } else {
+                rateChartInstance = buildRateChart(d.labels, d.data);
+            }
+        })
+        .catch(err => console.error('기간 데이터 로드 실패:', err));
 }
 
 // 키워드 분석 차트

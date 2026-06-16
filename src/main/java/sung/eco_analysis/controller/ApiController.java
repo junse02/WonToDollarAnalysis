@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import sung.eco_analysis.dto.AnalysisSummary;
 import sung.eco_analysis.dto.NaverNewsItem;
@@ -40,8 +41,10 @@ public class ApiController {
     }
 
     @GetMapping("/rate/history")
-    public ResponseEntity<Map<String, Object>> getRateHistory() {
-        List<RateHistory> history = exchangeRateService.getRecentHistory(30);
+    public ResponseEntity<Map<String, Object>> getRateHistory(
+            @RequestParam(defaultValue = "30") int days) {
+        int safeDays = Math.min(Math.max(days, 1), 365);  // 1~365일로 제한
+        List<RateHistory> history = exchangeRateService.getRecentHistory(safeDays);
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("MM/dd HH:mm");
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("labels", history.stream().map(h -> h.getRecordedAt().format(fmt)).collect(Collectors.toList()));

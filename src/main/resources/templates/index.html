@@ -158,8 +158,15 @@
         <div class="col-12">
             <div class="card chart-card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <span><i class="bi bi-graph-up me-2"></i>USD/KRW 환율 추이 (최근 30일)</span>
-                    <span class="badge bg-primary">실시간</span>
+                    <span><i class="bi bi-graph-up me-2"></i>USD/KRW 환율 추이</span>
+                    <div class="btn-group btn-group-sm" role="group" aria-label="기간 선택">
+                        <button type="button" class="btn btn-outline-primary period-btn" data-days="7"
+                                onclick="changePeriod(7, this)">7일</button>
+                        <button type="button" class="btn btn-outline-primary period-btn active" data-days="30"
+                                onclick="changePeriod(30, this)">30일</button>
+                        <button type="button" class="btn btn-outline-primary period-btn" data-days="90"
+                                onclick="changePeriod(90, this)">90일</button>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div th:if="${#lists.isEmpty(chartData)}" class="text-center text-muted py-4">
