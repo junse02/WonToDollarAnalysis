@@ -2,6 +2,7 @@ package sung.eco_analysis.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -30,6 +31,7 @@ public class NaverNewsService {
 
     private static final String NAVER_NEWS_URL = "https://openapi.naver.com/v1/search/news.json";
 
+    @Cacheable(value = "news", key = "#display", unless = "#result == null || #result.isEmpty()")
     public List<NaverNewsItem> fetchExchangeRateNews(int display) {
         String encodedQuery = URLEncoder.encode("달러 환율", StandardCharsets.UTF_8);
         String url = String.format("%s?query=%s&display=%d&sort=date", NAVER_NEWS_URL, encodedQuery, display);

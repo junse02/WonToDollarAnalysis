@@ -2,6 +2,7 @@ package sung.eco_analysis.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import sung.eco_analysis.dto.FrankfurterResponse;
@@ -26,6 +27,7 @@ public class ExchangeRateService {
     private static final String BASE_URL = "https://api.frankfurter.app";
     private static final String CURRENCY = "USD/KRW";
 
+    @Cacheable(value = "currentRate", unless = "#result == null")
     public Double fetchCurrentUsdKrw() {
         String url = BASE_URL + "/latest?from=USD&to=KRW";
         try {
