@@ -1,5 +1,12 @@
+// 테마별 차트 색상
+function isDark() { return document.documentElement.getAttribute('data-bs-theme') === 'dark'; }
+function chartGridColor() { return isDark() ? '#334155' : '#f1f5f9'; }
+function chartTickColor() { return isDark() ? '#94a3b8' : '#64748b'; }
+function chartLabelColor() { return isDark() ? '#e2e8f0' : '#1e293b'; }
+
 // 환율 추이 차트
 let rateChartInstance = null;
+let keywordChartInstance = null;
 
 function buildRateChart(labels, data) {
     const canvas = document.getElementById('rateChart');
@@ -40,13 +47,13 @@ function buildRateChart(labels, data) {
             },
             scales: {
                 x: {
-                    grid: { color: '#f1f5f9' },
-                    ticks: { color: '#64748b', maxTicksLimit: 8 }
+                    grid: { color: chartGridColor() },
+                    ticks: { color: chartTickColor(), maxTicksLimit: 8 }
                 },
                 y: {
-                    grid: { color: '#f1f5f9' },
+                    grid: { color: chartGridColor() },
                     ticks: {
-                        color: '#64748b',
+                        color: chartTickColor(),
                         callback: val => val.toLocaleString('ko-KR') + ' ₩'
                     }
                 }
@@ -94,7 +101,7 @@ if (KW_LABELS.length > 0) {
         return 'rgba(99, 102, 241, 0.75)';
     });
 
-    new Chart(kwCtx, {
+    keywordChartInstance = new Chart(kwCtx, {
         type: 'bar',
         data: {
             labels: KW_LABELS,
@@ -119,12 +126,12 @@ if (KW_LABELS.length > 0) {
             },
             scales: {
                 x: {
-                    grid: { color: '#f1f5f9' },
-                    ticks: { color: '#64748b', precision: 0 }
+                    grid: { color: chartGridColor() },
+                    ticks: { color: chartTickColor(), precision: 0 }
                 },
                 y: {
                     grid: { display: false },
-                    ticks: { color: '#1e293b', font: { size: 11 } }
+                    ticks: { color: chartLabelColor(), font: { size: 11 } }
                 }
             }
         }
@@ -138,3 +145,36 @@ function refreshData() {
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>로딩 중...';
     window.location.reload();
 }
+
+// ── 다크 모드 ──
+function updateThemeIcon(theme) {
+    const icon = document.getElementById('themeIcon');
+    if (icon) icon.className = theme === 'dark' ? 'bi bi-sun' : 'bi bi-moon-stars';
+}
+
+function applyChartTheme(chart) {
+    if (!chart) return;
+    const grid = chartGridColor(), tick = chartTickColor();
+    if (chart.options.scales.x) {
+        chart.options.scales.x.grid.color = grid;
+        chart.options.scales.x.ticks.color = tick;
+    }
+    if (chart.options.scales.y) {
+        if (chart.options.scales.y.grid) chart.options.scales.y.grid.color = grid;
+        chart.options.scales.y.ticks.color = chart.config.type === 'bar' ? chartLabelColor() : tick;
+    }
+    chart.update();
+}
+
+function toggleTheme() {
+    const html = document.documentElement;
+    const next = html.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-bs-theme', next);
+    localStorage.setItem('theme', next);
+    updateThemeIcon(next);
+    applyChartTheme(rateChartInstance);
+    applyChartTheme(keywordChartInstance);
+}
+
+// 로드 시 아이콘 동기화
+updateThemeIcon(document.documentElement.getAttribute('data-bs-theme') || 'light');
