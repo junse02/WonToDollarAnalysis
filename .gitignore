@@ -38,3 +38,8 @@ out/
 
 ### API Keys ###
 **/application-local.properties
+
+### H2 File Database ###
+/data/
+*.mv.db
+*.trace.db

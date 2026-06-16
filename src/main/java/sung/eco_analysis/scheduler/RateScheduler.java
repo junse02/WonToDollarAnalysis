@@ -15,13 +15,15 @@ public class RateScheduler {
 
     private final ExchangeRateService exchangeRateService;
 
-    // 앱 시작 시 최근 7일 과거 데이터 초기 로드
+    // 앱 시작 시 누락된 과거 데이터 백필 (이미 저장된 날짜는 건너뜀)
     @PostConstruct
     public void initHistoricalData() {
-        log.info("초기 환율 데이터 로드 시작");
+        long before = exchangeRateService.getStoredCount();
+        log.info("초기 환율 데이터 로드 시작 (기존 저장: {}건)", before);
         exchangeRateService.fetchAndSaveHistoricalRange();
         exchangeRateService.fetchAndSaveCurrentRate();
-        log.info("초기 환율 데이터 로드 완료");
+        long after = exchangeRateService.getStoredCount();
+        log.info("초기 환율 데이터 로드 완료 (총 {}건, 신규 {}건)", after, after - before);
     }
 
     // 매 1시간마다 현재 환율 저장

@@ -84,4 +84,8 @@ public class ExchangeRateService {
         LocalDateTime from = LocalDateTime.now().minusDays(days);
         return rateHistoryRepository.findByCurrencyAndRecordedAtAfterOrderByRecordedAt(CURRENCY, from);
     }
+
+    public long getStoredCount() {
+        return rateHistoryRepository.count();
+    }
 }
