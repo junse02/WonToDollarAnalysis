@@ -15,6 +15,7 @@ import sung.eco_analysis.service.SnapshotService;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -30,11 +31,29 @@ public class WebController {
 
     @GetMapping("/")
     public String index(Model model) {
-        // 현재 환율
+        List<String> warnings = new ArrayList<>();
+
+        // 현재 환율 - 실패 시 DB 마지막 저장값으로 폴백
         Double currentRate = exchangeRateService.fetchCurrentUsdKrw();
+        boolean rateStale = false;
+        if (currentRate == null) {
+            RateHistory last = exchangeRateService.getLatestStoredRate();
+            if (last != null) {
+                currentRate = last.getRate();
+                rateStale = true;
+                warnings.add("환율 API 응답이 지연되어 마지막 저장값("
+                        + last.getRecordedAt().format(DateTimeFormatter.ofPattern("MM/dd HH:mm"))
+                        + " 기준)을 표시합니다.");
+            } else {
+                warnings.add("환율 데이터를 일시적으로 불러오지 못했습니다.");
+            }
+        }
 
         // 뉴스 조회 및 키워드 분석 (100건 - 날짜별 매핑용)
         List<NaverNewsItem> allNews = naverNewsService.fetchExchangeRateNews(100);
+        if (allNews.isEmpty()) {
+            warnings.add("네이버 뉴스를 일시적으로 불러오지 못했습니다. 잠시 후 새로고침해 주세요.");
+        }
         Map<String, Integer> keywords = keywordAnalysisService.analyzeKeywords(allNews);
         String topKeyword = keywordAnalysisService.getTopKeyword(keywords);
 
@@ -75,6 +94,8 @@ public class WebController {
         model.addAttribute("kwValues", kwValues);
         model.addAttribute("changeEvents", changeEvents);
         model.addAttribute("analysis", analysisSummary);
+        model.addAttribute("warnings", warnings);
+        model.addAttribute("rateStale", rateStale);
         model.addAttribute("lastUpdated", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
 
         return "index";

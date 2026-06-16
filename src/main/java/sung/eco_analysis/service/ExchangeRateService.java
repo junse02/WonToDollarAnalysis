@@ -90,4 +90,9 @@ public class ExchangeRateService {
     public long getStoredCount() {
         return rateHistoryRepository.count();
     }
+
+    // 가장 최근 저장된 환율 (실시간 조회 실패 시 폴백)
+    public RateHistory getLatestStoredRate() {
+        return rateHistoryRepository.findFirstByCurrencyOrderByRecordedAtDesc(CURRENCY).orElse(null);
+    }
 }
