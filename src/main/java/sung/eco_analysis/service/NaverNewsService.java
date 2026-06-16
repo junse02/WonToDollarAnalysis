@@ -14,8 +14,8 @@ import sung.eco_analysis.dto.NaverNewsItem;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.time.ZonedDateTime;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -45,9 +45,11 @@ public class NaverNewsService {
             if (response.getBody() != null && response.getBody().getItems() != null) {
                 List<NaverNewsItem> items = response.getBody().getItems();
                 log.info("네이버 뉴스 조회 성공: {}건", items.size());
-                // 최근 7일 이내 기사만 필터링, 그래도 없으면 전체 반환
-                List<NaverNewsItem> recent = filterRecent(items, 7);
-                return recent.isEmpty() ? items : recent;
+                if (!items.isEmpty()) {
+                    log.info("최신 기사 pubDate: {}", items.get(0).getPubDate());
+                }
+                // 시스템 시계에 의존하지 않고, pubDate 최신순으로 정렬해 반환
+                return sortByDateDesc(items);
             }
         } catch (Exception e) {
             log.error("네이버 뉴스 조회 실패 (HTTP {}): {}", e.getClass().getSimpleName(), e.getMessage());
@@ -55,13 +57,13 @@ public class NaverNewsService {
         return Collections.emptyList();
     }
 
-    private List<NaverNewsItem> filterRecent(List<NaverNewsItem> items, int days) {
-        ZonedDateTime cutoff = ZonedDateTime.now().minusDays(days);
+    // 파싱된 pubDate 기준 최신순 정렬 (파싱 실패 항목은 뒤로)
+    private List<NaverNewsItem> sortByDateDesc(List<NaverNewsItem> items) {
         return items.stream()
-                .filter(item -> {
-                    ZonedDateTime date = item.getParsedDate();
-                    return date != null && date.isAfter(cutoff);
-                })
+                .sorted(Comparator.comparing(
+                        NaverNewsItem::getParsedDate,
+                        Comparator.nullsLast(Comparator.reverseOrder())
+                ))
                 .collect(Collectors.toList());
     }
 }
