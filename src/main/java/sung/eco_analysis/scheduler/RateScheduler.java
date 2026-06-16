@@ -7,7 +7,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import sung.eco_analysis.service.ExchangeRateService;
 
-import java.time.LocalDate;
 
 @Component
 @RequiredArgsConstructor
@@ -19,10 +18,8 @@ public class RateScheduler {
     // 앱 시작 시 최근 7일 과거 데이터 초기 로드
     @PostConstruct
     public void initHistoricalData() {
-        log.info("초기 환율 데이터 로드 시작 (최근 7일)");
-        for (int i = 7; i >= 1; i--) {
-            exchangeRateService.fetchAndSaveHistoricalRate(LocalDate.now().minusDays(i));
-        }
+        log.info("초기 환율 데이터 로드 시작");
+        exchangeRateService.fetchAndSaveHistoricalRange();
         exchangeRateService.fetchAndSaveCurrentRate();
         log.info("초기 환율 데이터 로드 완료");
     }
