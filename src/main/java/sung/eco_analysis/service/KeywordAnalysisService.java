@@ -176,10 +176,8 @@ public class KeywordAnalysisService {
 
     // ── 압력 지수 + 적중률 종합 ─────────────────────────────────────────────
 
-    public AnalysisSummary buildAnalysisSummary(
-            Map<String, Integer> keywords, List<RateChangeEvent> events) {
-
-        // 1) 달러 강세 압력 지수 (가중 합산)
+    // 달러 강세 압력 지수: 카테고리 가중 합산으로 -100~+100 산출
+    public int computePressureIndex(Map<String, Integer> keywords) {
         double up = 0, down = 0;
         for (String cat : RATE_UP_FACTORS) {
             up += keywords.getOrDefault(cat, 0) * FACTOR_WEIGHTS.getOrDefault(cat, 1.0);
@@ -188,32 +186,37 @@ public class KeywordAnalysisService {
             down += keywords.getOrDefault(cat, 0) * FACTOR_WEIGHTS.getOrDefault(cat, 1.0);
         }
         double total = up + down;
-        int index = (total == 0) ? 0 : (int) Math.round((up - down) / total * 100);
+        return (total == 0) ? 0 : (int) Math.round((up - down) / total * 100);
+    }
+
+    // 압력 지수로 방향 예측: true=강세(상승), false=약세(하락), null=중립
+    public Boolean predictedDirection(int index) {
+        if (index > 10) return true;
+        if (index < -10) return false;
+        return null;
+    }
+
+    // 적중률(matched/evaluated)은 누적 스냅샷에서 계산해 주입받음
+    public AnalysisSummary buildAnalysisSummary(
+            Map<String, Integer> keywords, int matchedCount, int evaluatedCount) {
+
+        int index = computePressureIndex(keywords);
         int gauge = (index + 100) / 2;  // -100~100 -> 0~100
         String label = pressureLabel(index);
-
-        // 2) 적중률 (예측 가능했던 변동일 중 방향 일치 비율)
-        int evaluated = 0, matched = 0;
-        for (RateChangeEvent e : events) {
-            if (e.getMatched() != null) {
-                evaluated++;
-                if (e.getMatched()) matched++;
-            }
-        }
-        int accuracy = (evaluated == 0) ? 0 : (int) Math.round((double) matched / evaluated * 100);
+        int accuracy = (evaluatedCount == 0) ? 0 : (int) Math.round((double) matchedCount / evaluatedCount * 100);
 
         String summaryText;
-        if (evaluated == 0) {
+        if (evaluatedCount == 0) {
             summaryText = String.format(
-                    "달러 강세 압력 지수 %+d (%s). 적중률은 일별 뉴스 스냅샷이 누적되면 산출됩니다.",
+                    "달러 강세 압력 지수 %+d (%s). 적중률은 일별 스냅샷이 누적되면 산출됩니다.",
                     index, label);
         } else {
             summaryText = String.format(
-                    "달러 강세 압력 지수 %+d (%s). 최근 주요 변동 %d일 중 %d일이 뉴스 키워드 방향과 일치했습니다 (적중률 %d%%).",
-                    index, label, evaluated, matched, accuracy);
+                    "달러 강세 압력 지수 %+d (%s). 누적 예측 %d일 중 %d일이 실제 환율 방향과 일치했습니다 (적중률 %d%%).",
+                    index, label, evaluatedCount, matchedCount, accuracy);
         }
 
-        return new AnalysisSummary(index, label, gauge, accuracy, matched, evaluated, summaryText);
+        return new AnalysisSummary(index, label, gauge, accuracy, matchedCount, evaluatedCount, summaryText);
     }
 
     private String pressureLabel(int index) {

@@ -115,11 +115,11 @@
                     <div th:if="${analysis.evaluatedCount > 0}">
                         <div class="accuracy-number" th:text="${analysis.accuracyPercent} + '%'">-</div>
                         <div class="text-muted small mt-1">
-                            주요 변동 <span th:text="${analysis.evaluatedCount}">0</span>일 중
+                            누적 예측 <span th:text="${analysis.evaluatedCount}">0</span>일 중
                             <span class="text-primary fw-bold" th:text="${analysis.matchedCount}">0</span>일 방향 일치
                         </div>
                         <div class="text-muted mt-2" style="font-size:0.75rem;">
-                            키워드가 예측한 방향과 실제 환율 변동 방향의 일치 비율
+                            매일 저장한 압력 지수 예측과 다음 날 실제 환율 방향의 일치 비율
                         </div>
                     </div>
                     <!-- 아직 누적 데이터가 없을 때 -->

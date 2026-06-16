@@ -12,6 +12,7 @@ import sung.eco_analysis.entity.RateHistory;
 import sung.eco_analysis.service.ExchangeRateService;
 import sung.eco_analysis.service.KeywordAnalysisService;
 import sung.eco_analysis.service.NaverNewsService;
+import sung.eco_analysis.service.SnapshotService;
 
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
@@ -27,6 +28,7 @@ public class ApiController {
     private final ExchangeRateService exchangeRateService;
     private final NaverNewsService naverNewsService;
     private final KeywordAnalysisService keywordAnalysisService;
+    private final SnapshotService snapshotService;
 
     @GetMapping("/rate/current")
     public ResponseEntity<Map<String, Object>> getCurrentRate() {
@@ -55,7 +57,8 @@ public class ApiController {
 
         List<RateHistory> history = exchangeRateService.getRecentHistory(30);
         List<RateChangeEvent> events = keywordAnalysisService.analyzeRateChangeEvents(history, news);
-        AnalysisSummary analysis = keywordAnalysisService.buildAnalysisSummary(keywords, events);
+        int[] acc = snapshotService.getAccuracyStats();
+        AnalysisSummary analysis = keywordAnalysisService.buildAnalysisSummary(keywords, acc[0], acc[1]);
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("keywords", keywords);

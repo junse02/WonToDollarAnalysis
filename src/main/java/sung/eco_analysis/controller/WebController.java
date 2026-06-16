@@ -11,6 +11,7 @@ import sung.eco_analysis.entity.RateHistory;
 import sung.eco_analysis.service.ExchangeRateService;
 import sung.eco_analysis.service.KeywordAnalysisService;
 import sung.eco_analysis.service.NaverNewsService;
+import sung.eco_analysis.service.SnapshotService;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -25,6 +26,7 @@ public class WebController {
     private final ExchangeRateService exchangeRateService;
     private final NaverNewsService naverNewsService;
     private final KeywordAnalysisService keywordAnalysisService;
+    private final SnapshotService snapshotService;
 
     @GetMapping("/")
     public String index(Model model) {
@@ -58,8 +60,9 @@ public class WebController {
         // 날짜별 환율 변동 원인 분석
         List<RateChangeEvent> changeEvents = keywordAnalysisService.analyzeRateChangeEvents(history, allNews);
 
-        // 압력 지수 + 적중률 종합
-        AnalysisSummary analysisSummary = keywordAnalysisService.buildAnalysisSummary(keywords, changeEvents);
+        // 압력 지수(현재 뉴스) + 적중률(누적 스냅샷)
+        int[] acc = snapshotService.getAccuracyStats();  // [matched, evaluated]
+        AnalysisSummary analysisSummary = keywordAnalysisService.buildAnalysisSummary(keywords, acc[0], acc[1]);
 
         model.addAttribute("currentRate", currentRate);
         model.addAttribute("newsCount", allNews.size());
