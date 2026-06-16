@@ -55,7 +55,7 @@ public class ExchangeRateService {
 
     // 최근 7일 시계열을 한 번에 가져옴
     public void fetchAndSaveHistoricalRange() {
-        LocalDate start = LocalDate.now().minusDays(7);
+        LocalDate start = LocalDate.now().minusDays(30);
         LocalDate end = LocalDate.now().minusDays(1);
         String url = String.format("%s/%s..%s?from=USD&to=KRW", BASE_URL, start, end);
         try {

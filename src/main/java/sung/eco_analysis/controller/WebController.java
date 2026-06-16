@@ -35,7 +35,7 @@ public class WebController {
         String topKeyword = keywordAnalysisService.getTopKeyword(keywords);
 
         // 환율 히스토리 (최근 7일)
-        List<RateHistory> history = exchangeRateService.getRecentHistory(7);
+        List<RateHistory> history = exchangeRateService.getRecentHistory(30);
 
         // 차트 데이터
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("MM/dd HH:mm");
