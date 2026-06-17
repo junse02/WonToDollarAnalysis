@@ -1,0 +1,25 @@
+# 배포 서버에서 실행: docker compose pull && docker compose up -d
+# 로컬에서 소스로 빌드해 띄우려면: docker compose up -d --build
+services:
+  app:
+    image: ghcr.io/junse02/wontodollaranalysis:latest
+    build: .                       # 로컬 빌드 시 사용 (pull 시에는 무시됨)
+    container_name: wontodollar
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      NAVER_CLIENT_ID: ${NAVER_CLIENT_ID:?NAVER_CLIENT_ID 필요}
+      NAVER_CLIENT_SECRET: ${NAVER_CLIENT_SECRET:?NAVER_CLIENT_SECRET 필요}
+    volumes:
+      - app-data:/app/data         # H2 파일 DB 영속
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 45s
+
+volumes:
+  app-data:

@@ -1,0 +1,22 @@
+# 빌드 산출물/캐시 (컨테이너 내부에서 새로 빌드)
+build/
+.gradle/
+
+# IDE/OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# 로컬 DB 데이터 (볼륨으로 관리)
+data/
+*.mv.db
+*.trace.db
+
+# 시크릿 (런타임 환경변수로 주입)
+**/application-local.properties
+
+# git/문서
+.git/
+.github/
+*.md
