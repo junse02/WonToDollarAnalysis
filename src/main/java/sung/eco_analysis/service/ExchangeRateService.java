@@ -13,6 +13,8 @@ import sung.eco_analysis.repository.RateHistoryRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -101,6 +103,16 @@ public class ExchangeRateService {
     public List<RateHistory> getRecentHistory(int days) {
         LocalDateTime from = LocalDateTime.now().minusDays(days);
         return rateHistoryRepository.findByCurrencyAndRecordedAtAfterOrderByRecordedAt(CURRENCY, from);
+    }
+
+    // 차트용: 날짜별 1개 대표값(그 날의 마지막 기록)으로 집계.
+    // 최근일은 매시간 저장돼 점이 몰리므로 일자별로 묶어 균등하게 표시한다.
+    public List<RateHistory> getDailyRecentHistory(int days) {
+        Map<LocalDate, RateHistory> byDay = new LinkedHashMap<>();
+        for (RateHistory h : getRecentHistory(days)) {
+            byDay.put(h.getRecordedAt().toLocalDate(), h);  // 오름차순이므로 마지막 기록이 남음
+        }
+        return new ArrayList<>(byDay.values());
     }
 
     public long getStoredCount() {

@@ -169,8 +169,8 @@ public class KeywordAnalysisService {
             ));
         }
 
-        // 절댓값 변동 큰 순 정렬 후 상위 10개
-        events.sort((a, b) -> Double.compare(Math.abs(b.getChangePercent()), Math.abs(a.getChangePercent())));
+        // 최근 날짜 우선 정렬 후 상위 10개 (events는 날짜 오름차순으로 생성됨)
+        Collections.reverse(events);
         return events.stream().limit(10).collect(Collectors.toList());
     }
 

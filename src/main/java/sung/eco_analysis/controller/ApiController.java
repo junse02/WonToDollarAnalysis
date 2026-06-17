@@ -44,8 +44,8 @@ public class ApiController {
     public ResponseEntity<Map<String, Object>> getRateHistory(
             @RequestParam(defaultValue = "30") int days) {
         int safeDays = Math.min(Math.max(days, 1), 365);  // 1~365일로 제한
-        List<RateHistory> history = exchangeRateService.getRecentHistory(safeDays);
-        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("MM/dd HH:mm");
+        List<RateHistory> history = exchangeRateService.getDailyRecentHistory(safeDays);
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("MM/dd");
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("labels", history.stream().map(h -> h.getRecordedAt().format(fmt)).collect(Collectors.toList()));
         result.put("data", history.stream().map(RateHistory::getRate).collect(Collectors.toList()));
