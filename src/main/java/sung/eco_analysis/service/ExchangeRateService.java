@@ -43,6 +43,22 @@ public class ExchangeRateService {
         return null;
     }
 
+    // 환율의 실제 발표일(ECB 기준일). Frankfurter는 영업일 1회만 갱신되므로
+    // 화면에 "조회 시각" 대신 이 날짜를 보여줘 갱신 여부를 정확히 알린다.
+    @Cacheable(value = "currentRate", key = "'date'", unless = "#result == null")
+    public LocalDate fetchCurrentRateDate() {
+        String url = BASE_URL + "/latest?from=USD&to=KRW";
+        try {
+            FrankfurterResponse response = restTemplate.getForObject(url, FrankfurterResponse.class);
+            if (response != null && response.getDate() != null) {
+                return LocalDate.parse(response.getDate());
+            }
+        } catch (Exception e) {
+            log.warn("환율 기준일 조회 실패: {}", e.getMessage());
+        }
+        return null;
+    }
+
     public void fetchAndSaveCurrentRate() {
         Double rate = fetchCurrentUsdKrw();
         if (rate != null) {

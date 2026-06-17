@@ -13,6 +13,7 @@ import sung.eco_analysis.service.KeywordAnalysisService;
 import sung.eco_analysis.service.NaverNewsService;
 import sung.eco_analysis.service.SnapshotService;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -36,16 +37,23 @@ public class WebController {
         // 현재 환율 - 실패 시 DB 마지막 저장값으로 폴백
         Double currentRate = exchangeRateService.fetchCurrentUsdKrw();
         boolean rateStale = false;
+        String rateDate = null;  // 환율의 실제 발표일(영업일 1회 갱신) - 조회 시각과 구분
         if (currentRate == null) {
             RateHistory last = exchangeRateService.getLatestStoredRate();
             if (last != null) {
                 currentRate = last.getRate();
                 rateStale = true;
+                rateDate = last.getRecordedAt().toLocalDate().format(DateTimeFormatter.ISO_DATE);
                 warnings.add("환율 API 응답이 지연되어 마지막 저장값("
                         + last.getRecordedAt().format(DateTimeFormatter.ofPattern("MM/dd HH:mm"))
                         + " 기준)을 표시합니다.");
             } else {
                 warnings.add("환율 데이터를 일시적으로 불러오지 못했습니다.");
+            }
+        } else {
+            LocalDate d = exchangeRateService.fetchCurrentRateDate();
+            if (d != null) {
+                rateDate = d.format(DateTimeFormatter.ISO_DATE);
             }
         }
 
@@ -96,6 +104,7 @@ public class WebController {
         model.addAttribute("analysis", analysisSummary);
         model.addAttribute("warnings", warnings);
         model.addAttribute("rateStale", rateStale);
+        model.addAttribute("rateDate", rateDate);
         model.addAttribute("lastUpdated", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
 
         return "index";

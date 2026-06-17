@@ -25,7 +25,7 @@
     <div class="d-flex align-items-center gap-3">
         <span class="text-light-muted small">
             <i class="bi bi-clock me-1"></i>
-            마지막 업데이트: <span th:text="${lastUpdated}">-</span>
+            마지막 조회: <span th:text="${lastUpdated}">-</span>
         </span>
         <button class="btn btn-sm btn-outline-light" onclick="toggleTheme()" id="themeToggle" title="테마 전환">
             <i class="bi bi-moon-stars" id="themeIcon"></i>
@@ -60,9 +60,11 @@
                     </div>
                     <div class="rate-display" th:text="${currentRate != null} ? ${#numbers.formatDecimal(currentRate, 1, 2)} + ' ₩' : 'N/A'">-</div>
                     <div class="text-muted small mt-1">
-                        <span th:if="${!rateStale}">기준통화 1 USD</span>
+                        <span th:if="${!rateStale}">
+                            기준통화 1 USD<span th:if="${rateDate != null}" th:text="' · 기준일 ' + ${rateDate}"></span>
+                        </span>
                         <span th:if="${rateStale}" class="text-warning">
-                            <i class="bi bi-clock-history me-1"></i>마지막 저장값 (실시간 지연)
+                            <i class="bi bi-clock-history me-1"></i>마지막 저장값 (실시간 지연)<span th:if="${rateDate != null}" th:text="' · 기준일 ' + ${rateDate}"></span>
                         </span>
                     </div>
                 </div>
