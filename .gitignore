@@ -42,8 +42,10 @@ out/
 ### SSH / 개인키 (절대 커밋 금지) ###
 *.pem
 *.key
+*.pub
 id_rsa
 id_ed25519
+deploy_key*
 
 ### H2 File Database ###
 /data/
