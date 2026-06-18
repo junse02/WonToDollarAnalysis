@@ -189,6 +189,18 @@ public class KeywordAnalysisService {
         return (total == 0) ? 0 : (int) Math.round((up - down) / total * 100);
     }
 
+    // 부트스트랩용: 뉴스 윈도우 내 '뉴스가 있는 각 날짜'의 달러 강세 압력 지수를 산출.
+    // 변동 원인 분석과 동일하게 해당 날짜 ±1일 뉴스를 모아 평가한다. (날짜 오름차순)
+    public Map<LocalDate, Integer> computeHistoricalPressureIndex(List<NaverNewsItem> allNews) {
+        Map<LocalDate, List<NaverNewsItem>> newsByDate = groupNewsByDate(allNews);
+        Map<LocalDate, Integer> result = new TreeMap<>();
+        for (LocalDate date : newsByDate.keySet()) {
+            List<NaverNewsItem> around = getNewsAroundDate(newsByDate, date);
+            result.put(date, computePressureIndex(analyzeKeywords(around)));
+        }
+        return result;
+    }
+
     // 압력 지수로 방향 예측: true=강세(상승), false=약세(하락), null=중립
     public Boolean predictedDirection(int index) {
         if (index > 10) return true;

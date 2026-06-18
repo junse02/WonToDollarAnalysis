@@ -47,6 +47,46 @@ public class SnapshotService {
                 predictedUp == null ? "중립" : (predictedUp ? "강세" : "약세"));
     }
 
+    // 부트스트랩: 백필된 과거 환율 + 최근 뉴스 윈도우로 과거 날짜 스냅샷을 소급 생성한다.
+    // 라이브 스냅샷(이미 존재하는 날짜)은 보존하며, 생성 후 즉시 사후 평가까지 수행한다.
+    // 뉴스 API가 최근 기사만 제공하므로 소급 범위는 뉴스 윈도우(보통 최근 수일)로 제한된다.
+    public void bootstrapFromHistory() {
+        List<NaverNewsItem> news = naverNewsService.fetchExchangeRateNews(100);
+        Map<LocalDate, Integer> indexByDate = keywordAnalysisService.computeHistoricalPressureIndex(news);
+        if (indexByDate.isEmpty()) {
+            log.info("부트스트랩 건너뜀: 뉴스 윈도우에서 날짜를 추출하지 못함");
+            return;
+        }
+
+        // 날짜 -> 환율 (일별 마지막 기록)
+        Map<LocalDate, Double> rateByDate = new TreeMap<>();
+        for (RateHistory h : exchangeRateService.getRecentHistory(90)) {
+            rateByDate.put(h.getRecordedAt().toLocalDate(), h.getRate());
+        }
+
+        LocalDate today = LocalDate.now();
+        int created = 0;
+        for (Map.Entry<LocalDate, Integer> e : indexByDate.entrySet()) {
+            LocalDate date = e.getKey();
+            if (!date.isBefore(today)) continue;                          // 오늘/미래는 captureToday 담당
+            if (snapshotRepository.existsBySnapshotDate(date)) continue;  // 라이브 스냅샷 보존
+            Double rateOnDate = rateByDate.get(date);
+            if (rateOnDate == null) continue;                            // 그 날 환율 기준점 없음
+
+            int index = e.getValue();
+            Boolean predictedUp = keywordAnalysisService.predictedDirection(index);
+            snapshotRepository.save(new DailySnapshot(date, index, predictedUp, rateOnDate));
+            created++;
+        }
+
+        if (created > 0) {
+            log.info("과거 스냅샷 부트스트랩: {}건 생성", created);
+            evaluatePending();  // 다음 날 환율이 확보된 건은 즉시 평가
+        } else {
+            log.info("부트스트랩: 새로 생성할 과거 스냅샷 없음");
+        }
+    }
+
     // 미평가 스냅샷 중 이후 날짜 환율이 확보된 건을 평가
     public void evaluatePending() {
         List<DailySnapshot> pending = snapshotRepository.findByEvaluatedFalse();

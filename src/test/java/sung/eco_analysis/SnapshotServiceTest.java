@@ -2,6 +2,7 @@ package sung.eco_analysis;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -16,8 +17,11 @@ import sung.eco_analysis.service.SnapshotService;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -78,6 +82,52 @@ class SnapshotServiceTest {
 
         assertThat(snap.isEvaluated()).isTrue();
         assertThat(snap.getMatched()).isNull();
+    }
+
+    // 부트스트랩: 뉴스 윈도우의 과거 날짜를 소급해 스냅샷을 생성한다
+    @Test
+    void bootstrap_createsPastSnapshot_fromNewsWindow() {
+        LocalDate past = LocalDate.now().minusDays(2);
+        LocalDate next = LocalDate.now().minusDays(1);
+
+        when(naverNewsService.fetchExchangeRateNews(100)).thenReturn(List.of());
+        when(keywordAnalysisService.computeHistoricalPressureIndex(anyList()))
+                .thenReturn(Map.of(past, 50));
+        when(keywordAnalysisService.predictedDirection(50)).thenReturn(true);
+        when(exchangeRateService.getRecentHistory(90)).thenReturn(List.of(
+                new RateHistory("USD/KRW", 1500.0, past.atTime(12, 0)),
+                new RateHistory("USD/KRW", 1520.0, next.atTime(12, 0))
+        ));
+        when(snapshotRepository.existsBySnapshotDate(past)).thenReturn(false);
+        when(snapshotRepository.findByEvaluatedFalse()).thenReturn(List.of());
+
+        snapshotService.bootstrapFromHistory();
+
+        ArgumentCaptor<DailySnapshot> captor = ArgumentCaptor.forClass(DailySnapshot.class);
+        verify(snapshotRepository).save(captor.capture());
+        DailySnapshot saved = captor.getValue();
+        assertThat(saved.getSnapshotDate()).isEqualTo(past);
+        assertThat(saved.getPressureIndex()).isEqualTo(50);
+        assertThat(saved.getPredictedUp()).isTrue();
+        assertThat(saved.getRate()).isEqualTo(1500.0);
+    }
+
+    // 부트스트랩: 이미 라이브 스냅샷이 있는 날짜는 덮어쓰지 않는다
+    @Test
+    void bootstrap_skipsExistingSnapshotDate() {
+        LocalDate past = LocalDate.now().minusDays(2);
+
+        when(naverNewsService.fetchExchangeRateNews(100)).thenReturn(List.of());
+        when(keywordAnalysisService.computeHistoricalPressureIndex(anyList()))
+                .thenReturn(Map.of(past, 50));
+        when(exchangeRateService.getRecentHistory(90)).thenReturn(List.of(
+                new RateHistory("USD/KRW", 1500.0, past.atTime(12, 0))
+        ));
+        when(snapshotRepository.existsBySnapshotDate(past)).thenReturn(true);
+
+        snapshotService.bootstrapFromHistory();
+
+        verify(snapshotRepository, org.mockito.Mockito.never()).save(org.mockito.ArgumentMatchers.any());
     }
 
     // 다음 날 환율이 아직 없으면 평가 보류 (evaluated=false 유지)

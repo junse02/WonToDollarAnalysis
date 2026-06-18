@@ -26,7 +26,8 @@ public class RateScheduler {
         long after = exchangeRateService.getStoredCount();
         log.info("초기 환율 데이터 로드 완료 (총 {}건, 신규 {}건)", after, after - before);
 
-        // 스냅샷: 어제까지 미평가 건 평가 후 오늘 캡처
+        // 스냅샷: 백필된 과거 환율+뉴스로 소급 생성 → 미평가 건 평가 → 오늘 캡처
+        snapshotService.bootstrapFromHistory();
         snapshotService.evaluatePending();
         snapshotService.captureToday();
     }
