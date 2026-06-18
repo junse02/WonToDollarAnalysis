@@ -39,8 +39,9 @@ public class NaverNewsService {
         URI uri = URI.create(url);
 
         HttpHeaders headers = new HttpHeaders();
-        headers.set("X-Naver-Client-Id", apiProperties.getNaver().getClientId());
-        headers.set("X-Naver-Client-Secret", apiProperties.getNaver().getClientSecret());
+        // 시크릿/환경변수에 섞여 들어올 수 있는 앞뒤 공백·개행 제거 (HTTP 헤더 값에 \r\n 불가)
+        headers.set("X-Naver-Client-Id", apiProperties.getNaver().getClientId().trim());
+        headers.set("X-Naver-Client-Secret", apiProperties.getNaver().getClientSecret().trim());
 
         try {
             HttpEntity<Void> entity = new HttpEntity<>(headers);
