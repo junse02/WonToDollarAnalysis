@@ -39,6 +39,12 @@ out/
 ### API Keys ###
 **/application-local.properties
 
+### SSH / 개인키 (절대 커밋 금지) ###
+*.pem
+*.key
+id_rsa
+id_ed25519
+
 ### H2 File Database ###
 /data/
 *.mv.db
