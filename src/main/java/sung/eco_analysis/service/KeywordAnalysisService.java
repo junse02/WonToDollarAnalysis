@@ -50,22 +50,22 @@ public class KeywordAnalysisService {
         ));
     }
 
-    // 달러 강세 요인 카테고리
+    // 달러 강세 '원인' 요인 카테고리.
+    // "달러 강세/약세" 자체는 환율 변동의 원인이 아니라 결과(시세 언급)이고,
+    // 검색어("달러 환율")상 항상 빈번하게 등장해 지수를 왜곡하므로 원인 집합에서 제외한다.
     private static final Set<String> RATE_UP_FACTORS = new HashSet<>(Arrays.asList(
-            "연준 긴축·금리 인상", "달러 강세", "지정학 리스크", "경기침체 우려", "무역·수입 압박"
+            "연준 긴축·금리 인상", "지정학 리스크", "경기침체 우려", "무역·수입 압박"
     ));
-    // 달러 약세 요인 카테고리
+    // 달러 약세 '원인' 요인 카테고리
     private static final Set<String> RATE_DOWN_FACTORS = new HashSet<>(Arrays.asList(
-            "연준 완화·금리 인하", "달러 약세", "무역·수출 호조", "외국인 자금 유입"
+            "연준 완화·금리 인하", "무역·수출 호조", "외국인 자금 유입"
     ));
 
-    // 카테고리별 시장 영향 가중치 (금리 > 환율 직접 언급 > 무역/수급 > 기타)
+    // 카테고리별 시장 영향 가중치 (금리 > 지정학/무역 > 수급/기타)
     private static final Map<String, Double> FACTOR_WEIGHTS = new HashMap<>();
     static {
         FACTOR_WEIGHTS.put("연준 긴축·금리 인상", 3.0);
         FACTOR_WEIGHTS.put("연준 완화·금리 인하", 3.0);
-        FACTOR_WEIGHTS.put("달러 강세", 2.0);
-        FACTOR_WEIGHTS.put("달러 약세", 2.0);
         FACTOR_WEIGHTS.put("지정학 리스크", 2.0);
         FACTOR_WEIGHTS.put("무역·수출 호조", 2.0);
         FACTOR_WEIGHTS.put("무역·수입 압박", 1.5);
@@ -89,6 +89,18 @@ public class KeywordAnalysisService {
             }
         }
         return sortByValueDesc(counts);
+    }
+
+    // 시세 '결과'를 나타내는 카테고리 (환율 변동의 원인이 아니므로 원인 차트에서 제외)
+    public static final Set<String> RESULT_CATEGORIES = Set.of("달러 강세", "달러 약세");
+
+    /** 키워드 빈도 맵에서 '시세 결과' 카테고리를 제외해 원인 카테고리만 남긴다 (정렬 순서 유지). */
+    public Map<String, Integer> causalKeywordsOnly(Map<String, Integer> keywords) {
+        Map<String, Integer> result = new LinkedHashMap<>();
+        keywords.forEach((k, v) -> {
+            if (!RESULT_CATEGORIES.contains(k)) result.put(k, v);
+        });
+        return result;
     }
 
     public String getTopKeyword(Map<String, Integer> keywords) {

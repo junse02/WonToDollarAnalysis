@@ -78,9 +78,10 @@ public class WebController {
                 .map(RateHistory::getRate)
                 .collect(Collectors.toList());
 
-        // 키워드 차트 데이터 (상위 7개)
-        List<String> kwLabels = keywords.keySet().stream().limit(7).collect(Collectors.toList());
-        List<Integer> kwValues = keywords.values().stream().limit(7).collect(Collectors.toList());
+        // 키워드 차트 데이터 (원인 카테고리만, 상위 7개) - 시세 결과("달러 강세/약세")는 제외
+        Map<String, Integer> causalKeywords = keywordAnalysisService.causalKeywordsOnly(keywords);
+        List<String> kwLabels = causalKeywords.keySet().stream().limit(7).collect(Collectors.toList());
+        List<Integer> kwValues = causalKeywords.values().stream().limit(7).collect(Collectors.toList());
 
         // 분석 요약
         String summary = keywordAnalysisService.generateSummary(keywords, currentRate, history);
