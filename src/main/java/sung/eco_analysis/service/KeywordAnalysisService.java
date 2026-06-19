@@ -104,7 +104,8 @@ public class KeywordAnalysisService {
     }
 
     public String getTopKeyword(Map<String, Integer> keywords) {
-        return keywords.entrySet().stream()
+        // 시세 결과("달러 강세/약세")는 제외하고 원인 카테고리 중 최다 항목을 대표로 사용
+        return causalKeywordsOnly(keywords).entrySet().stream()
                 .filter(e -> e.getValue() > 0)
                 .findFirst()
                 .map(Map.Entry::getKey)
@@ -292,7 +293,7 @@ public class KeywordAnalysisService {
                     : "관련 뉴스를 찾지 못했습니다. 글로벌 달러 약세 흐름이 영향을 준 것으로 보입니다.";
         }
 
-        String topCategory = keywords.entrySet().stream()
+        String topCategory = causalKeywordsOnly(keywords).entrySet().stream()
                 .filter(e -> e.getValue() > 0)
                 .findFirst()
                 .map(Map.Entry::getKey)
