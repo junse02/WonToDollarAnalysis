@@ -94,6 +94,14 @@ curl http://localhost:8080/actuator/health   # {"status":"UP"}
 
 자세한 배포 설정(시크릿·변수, 서버 준비, 자동 배포 활성화)은 [DEPLOY.md](DEPLOY.md)를 참고하세요.
 
+### 운영 환경
+
+- **이미지**: `ghcr.io/junse02/wontodollaranalysis:latest` (+ 커밋 SHA 태그)
+- **실행 형태**: 배포 서버에서 `docker compose`로 `prod` 프로필 컨테이너 1개 구동, H2 데이터는 `app-data` 볼륨에 영속
+- **접속**: 도메인 없이 배포 서버 IP로 접속 — `http://<배포서버 IP>:8080`
+  - 헬스 체크: `http://<배포서버 IP>:8080/actuator/health` → `{"status":"UP"}`
+- **배포 반영**: `main` 푸시 시 CD가 새 이미지를 GHCR에 푸시하고, 서버에서 `docker compose pull && up -d`로 자동 교체 (`DEPLOY_ENABLED=true`인 경우)
+
 ## 프로필
 
 | 프로필 | 용도 | 특징 |
