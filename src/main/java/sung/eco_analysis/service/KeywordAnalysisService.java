@@ -78,17 +78,26 @@ public class KeywordAnalysisService {
         KEYWORD_CATEGORIES.keySet().forEach(k -> counts.put(k, 0));
 
         for (NaverNewsItem item : newsItems) {
-            String text = (item.getCleanTitle() + " " + item.getCleanDescription()).toLowerCase();
-            for (Map.Entry<String, List<String>> entry : KEYWORD_CATEGORIES.entrySet()) {
-                for (String keyword : entry.getValue()) {
-                    if (text.contains(keyword.toLowerCase())) {
-                        counts.merge(entry.getKey(), 1, Integer::sum);
-                        break;
-                    }
-                }
+            for (String category : matchedCategories(item)) {
+                counts.merge(category, 1, Integer::sum);
             }
         }
         return sortByValueDesc(counts);
+    }
+
+    // 기사 1건이 매칭되는 카테고리 집합 (카테고리당 최대 1회)
+    private Set<String> matchedCategories(NaverNewsItem item) {
+        String text = (item.getCleanTitle() + " " + item.getCleanDescription()).toLowerCase();
+        Set<String> matched = new LinkedHashSet<>();
+        for (Map.Entry<String, List<String>> entry : KEYWORD_CATEGORIES.entrySet()) {
+            for (String keyword : entry.getValue()) {
+                if (text.contains(keyword.toLowerCase())) {
+                    matched.add(entry.getKey());
+                    break;
+                }
+            }
+        }
+        return matched;
     }
 
     // 시세 '결과'를 나타내는 카테고리 (환율 변동의 원인이 아니므로 원인 차트에서 제외)
@@ -191,27 +200,59 @@ public class KeywordAnalysisService {
 
     // 달러 강세 압력 지수: 카테고리 가중 합산으로 -100~+100 산출
     public int computePressureIndex(Map<String, Integer> keywords) {
-        double up = 0, down = 0;
-        for (String cat : RATE_UP_FACTORS) {
-            up += keywords.getOrDefault(cat, 0) * FACTOR_WEIGHTS.getOrDefault(cat, 1.0);
-        }
-        for (String cat : RATE_DOWN_FACTORS) {
-            down += keywords.getOrDefault(cat, 0) * FACTOR_WEIGHTS.getOrDefault(cat, 1.0);
-        }
-        double total = up + down;
-        return (total == 0) ? 0 : (int) Math.round((up - down) / total * 100);
+        Map<String, Double> weighted = new HashMap<>();
+        keywords.forEach((k, v) -> weighted.put(k, (double) v));
+        return computePressureIndexWeighted(weighted);
     }
 
-    // 부트스트랩용: 뉴스 윈도우 내 '뉴스가 있는 각 날짜'의 달러 강세 압력 지수를 산출.
-    // 변동 원인 분석과 동일하게 해당 날짜 ±1일 뉴스를 모아 평가한다. (날짜 오름차순)
+    // 변동일 직전 며칠 뉴스까지 지수에 반영할지 (룩어헤드 방지를 위해 '이후' 날짜는 제외)
+    private static final int HISTORY_LOOKBACK_DAYS = 2;
+
+    // 대상일과의 거리별 가중치: 당일(=1.0)이 지수를 지배하고 직전일로 갈수록 감쇠.
+    // 미래 기사는 0 (그 날의 변동을 '예측'할 때 다음 날 기사를 쓰면 룩어헤드 편향).
+    private static double recencyWeight(int daysBefore) {
+        switch (daysBefore) {
+            case 0: return 1.0;
+            case 1: return 0.6;
+            case 2: return 0.3;
+            default: return 0.0;
+        }
+    }
+
+    // 부트스트랩용: 뉴스 윈도우 내 '뉴스가 있는 각 날짜'의 달러 강세 압력 지수를 산출. (날짜 오름차순)
+    // 대칭 ±1일 윈도우는 인접일끼리 뉴스를 2/3 공유해 매일 같은 지수가 나오는(변별력 0) 문제가 있었다.
+    // 대신 [대상일-N .. 대상일] 트레일링 윈도우에 최신일 가중치를 줘, 각 날짜의 '당일 뉴스'가 지수를 지배하게 한다.
     public Map<LocalDate, Integer> computeHistoricalPressureIndex(List<NaverNewsItem> allNews) {
         Map<LocalDate, List<NaverNewsItem>> newsByDate = groupNewsByDate(allNews);
         Map<LocalDate, Integer> result = new TreeMap<>();
         for (LocalDate date : newsByDate.keySet()) {
-            List<NaverNewsItem> around = getNewsAroundDate(newsByDate, date);
-            result.put(date, computePressureIndex(analyzeKeywords(around)));
+            Map<String, Double> weighted = new HashMap<>();
+            for (int back = 0; back <= HISTORY_LOOKBACK_DAYS; back++) {
+                List<NaverNewsItem> dayNews = newsByDate.get(date.minusDays(back));
+                if (dayNews == null) continue;
+                double w = recencyWeight(back);
+                for (NaverNewsItem item : dayNews) {
+                    for (String category : matchedCategories(item)) {
+                        weighted.merge(category, w, Double::sum);
+                    }
+                }
+            }
+            result.put(date, computePressureIndexWeighted(weighted));
         }
         return result;
+    }
+
+    // 가중 키워드 빈도(Map<카테고리, 가중합>)로부터 달러 강세 압력 지수(-100~+100)를 산출
+    private int computePressureIndexWeighted(Map<String, Double> weightedCounts) {
+        double up = 0, down = 0;
+        for (String cat : RATE_UP_FACTORS) {
+            up += weightedCounts.getOrDefault(cat, 0.0) * FACTOR_WEIGHTS.getOrDefault(cat, 1.0);
+        }
+        for (String cat : RATE_DOWN_FACTORS) {
+            down += weightedCounts.getOrDefault(cat, 0.0) * FACTOR_WEIGHTS.getOrDefault(cat, 1.0);
+        }
+        double total = up + down;
+        return (total == 0) ? 0 : (int) Math.round((up - down) / total * 100);
     }
 
     // 압력 지수로 방향 예측: true=강세(상승), false=약세(하락), null=중립
@@ -241,7 +282,9 @@ public class KeywordAnalysisService {
                     index, label, evaluatedCount, matchedCount, accuracy);
         }
 
-        return new AnalysisSummary(index, label, gauge, accuracy, matchedCount, evaluatedCount, summaryText);
+        boolean accuracyAvailable = evaluatedCount > 0;
+        return new AnalysisSummary(index, label, gauge, accuracy, matchedCount, evaluatedCount,
+                accuracyAvailable, summaryText);
     }
 
     private String pressureLabel(int index) {

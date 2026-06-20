@@ -84,6 +84,42 @@ class SnapshotServiceTest {
         assertThat(snap.getMatched()).isNull();
     }
 
+    // 다음 환율이 보합(±0.1% 미만)뿐이면 채점하지 않고 평가 보류 (다음 변동 대기)
+    @Test
+    void evaluate_flatRate_staysPending() {
+        DailySnapshot snap = new DailySnapshot(LocalDate.of(2026, 6, 10), 50, true, 1500.0);
+        when(snapshotRepository.findByEvaluatedFalse()).thenReturn(List.of(snap));
+        when(exchangeRateService.getRecentHistory(90)).thenReturn(List.of(
+                new RateHistory("USD/KRW", 1500.0, LocalDateTime.of(2026, 6, 10, 12, 0)),
+                // +0.05% 변동 -> 보합 임계치(0.1%) 미만 -> 평가 보류
+                new RateHistory("USD/KRW", 1500.75, LocalDateTime.of(2026, 6, 11, 12, 0))
+        ));
+
+        snapshotService.evaluatePending();
+
+        assertThat(snap.isEvaluated()).isFalse();
+        assertThat(snap.getMatched()).isNull();
+    }
+
+    // 주말 동결(보합)은 건너뛰고, 시장이 다시 움직인 다음 영업일 환율로 채점한다
+    @Test
+    void evaluate_skipsFlatWeekend_scoresOnNextMove() {
+        // 금요일 스냅샷, 토요일은 금요일 종가 그대로(동결), 월요일에 상승
+        DailySnapshot snap = new DailySnapshot(LocalDate.of(2026, 6, 19), 50, true, 1532.31);
+        when(snapshotRepository.findByEvaluatedFalse()).thenReturn(List.of(snap));
+        when(exchangeRateService.getRecentHistory(90)).thenReturn(List.of(
+                new RateHistory("USD/KRW", 1532.31, LocalDateTime.of(2026, 6, 19, 12, 0)),
+                new RateHistory("USD/KRW", 1532.31, LocalDateTime.of(2026, 6, 20, 12, 0)),  // 토(동결)
+                new RateHistory("USD/KRW", 1545.00, LocalDateTime.of(2026, 6, 22, 12, 0))   // 월(상승)
+        ));
+
+        snapshotService.evaluatePending();
+
+        assertThat(snap.isEvaluated()).isTrue();
+        assertThat(snap.getActualUp()).isTrue();   // 월요일 종가 기준 상승
+        assertThat(snap.getMatched()).isTrue();    // 강세 예측 적중
+    }
+
     // 부트스트랩: 뉴스 윈도우의 과거 날짜를 소급해 스냅샷을 생성한다
     @Test
     void bootstrap_createsPastSnapshot_fromNewsWindow() {

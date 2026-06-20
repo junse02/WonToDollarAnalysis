@@ -69,7 +69,8 @@ public class ApiController {
         result.put("newsCount", news.size());
         result.put("pressureIndex", analysis.getPressureIndex());
         result.put("pressureLabel", analysis.getPressureLabel());
-        result.put("accuracyPercent", analysis.getAccuracyPercent());
+        result.put("accuracyAvailable", analysis.isAccuracyAvailable());
+        result.put("accuracyPercent", analysis.isAccuracyAvailable() ? analysis.getAccuracyPercent() : null);
         result.put("changeEvents", events);
         return ResponseEntity.ok(result);
     }

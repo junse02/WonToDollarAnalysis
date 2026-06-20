@@ -23,6 +23,11 @@ public class SnapshotService {
     private final NaverNewsService naverNewsService;
     private final KeywordAnalysisService keywordAnalysisService;
 
+    // 의미 있는 변동으로 인정할 최소 환율 변동폭(±%). 이보다 작으면 '보합'으로 보고 채점하지 않는다.
+    // 보합인 날(주말 동결 환율 등)은 건너뛰고, 시장이 실제로 움직인 다음 환율로 채점한다.
+    // 끝까지 보합이면 강제로 실패 처리하지 않고 의미 있는 변동이 나올 때까지 평가를 보류한다.
+    private static final double FLAT_THRESHOLD_PERCENT = 0.1;
+
     // 오늘 분석 스냅샷 캡처 (날짜당 1건, 이미 있으면 최신값으로 갱신)
     public void captureToday() {
         Double rate = exchangeRateService.fetchCurrentUsdKrw();
@@ -100,17 +105,21 @@ public class SnapshotService {
 
         int evaluatedNow = 0;
         for (DailySnapshot snap : pending) {
-            // 스냅샷 날짜 이후 첫 환율 (TreeMap 오름차순 보장)
-            Double laterRate = null;
+            // 스냅샷 날짜 이후 '의미 있는 변동(±임계치 이상)'이 처음 나타난 환율을 찾는다.
+            // 주말 동결(금요일 종가가 토·일에 그대로 기록)처럼 보합인 날은 건너뛰고,
+            // 시장이 실제로 움직인 다음 영업일 환율로 채점한다. (TreeMap 오름차순 보장)
+            Double movedRate = null;
             for (Map.Entry<LocalDate, Double> e : rateByDate.entrySet()) {
-                if (e.getKey().isAfter(snap.getSnapshotDate())) {
-                    laterRate = e.getValue();
+                if (!e.getKey().isAfter(snap.getSnapshotDate())) continue;
+                double changePercent = (e.getValue() - snap.getRate()) / snap.getRate() * 100;
+                if (Math.abs(changePercent) >= FLAT_THRESHOLD_PERCENT) {
+                    movedRate = e.getValue();
                     break;
                 }
             }
-            if (laterRate == null) continue;  // 아직 다음 날 환율 없음
+            if (movedRate == null) continue;  // 아직 의미 있는 변동 없음(보합·주말 동결) → 평가 보류
 
-            boolean actualUp = laterRate > snap.getRate();
+            boolean actualUp = movedRate > snap.getRate();
             snap.setActualUp(actualUp);
             snap.setEvaluated(true);
             // 중립(predictedUp=null)이면 matched는 null로 두어 적중률 집계에서 제외
