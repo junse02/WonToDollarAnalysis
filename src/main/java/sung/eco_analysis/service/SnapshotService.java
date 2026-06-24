@@ -20,8 +20,11 @@ public class SnapshotService {
 
     private final DailySnapshotRepository snapshotRepository;
     private final ExchangeRateService exchangeRateService;
-    private final NaverNewsService naverNewsService;
+    private final NewsArchiveService newsArchiveService;
     private final KeywordAnalysisService keywordAnalysisService;
+
+    // 부트스트랩/히스토리 분석에 사용할 아카이브 조회 범위(일)
+    private static final int HISTORY_WINDOW_DAYS = 90;
 
     // 의미 있는 변동으로 인정할 최소 환율 변동폭(±%). 이보다 작으면 '보합'으로 보고 채점하지 않는다.
     // 보합인 날(주말 동결 환율 등)은 건너뛰고, 시장이 실제로 움직인 다음 환율로 채점한다.
@@ -36,7 +39,7 @@ public class SnapshotService {
             return;
         }
 
-        List<NaverNewsItem> news = naverNewsService.fetchExchangeRateNews(100);
+        List<NaverNewsItem> news = newsArchiveService.getLatestNews(100);
         Map<String, Integer> keywords = keywordAnalysisService.analyzeKeywords(news);
         int index = keywordAnalysisService.computePressureIndex(keywords);
         Boolean predictedUp = keywordAnalysisService.predictedDirection(index);
@@ -54,9 +57,9 @@ public class SnapshotService {
 
     // 부트스트랩: 백필된 과거 환율 + 최근 뉴스 윈도우로 과거 날짜 스냅샷을 소급 생성한다.
     // 라이브 스냅샷(이미 존재하는 날짜)은 보존하며, 생성 후 즉시 사후 평가까지 수행한다.
-    // 뉴스 API가 최근 기사만 제공하므로 소급 범위는 뉴스 윈도우(보통 최근 수일)로 제한된다.
+    // 뉴스는 DB 아카이브(누적 저장분)에서 읽으므로, 가동 기간이 길수록 소급 범위도 함께 넓어진다.
     public void bootstrapFromHistory() {
-        List<NaverNewsItem> news = naverNewsService.fetchExchangeRateNews(100);
+        List<NaverNewsItem> news = newsArchiveService.getRecentNews(HISTORY_WINDOW_DAYS);
         Map<LocalDate, Integer> indexByDate = keywordAnalysisService.computeHistoricalPressureIndex(news);
         if (indexByDate.isEmpty()) {
             log.info("부트스트랩 건너뜀: 뉴스 윈도우에서 날짜를 추출하지 못함");

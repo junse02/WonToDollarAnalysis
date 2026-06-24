@@ -10,7 +10,7 @@ import sung.eco_analysis.dto.RateChangeEvent;
 import sung.eco_analysis.entity.RateHistory;
 import sung.eco_analysis.service.ExchangeRateService;
 import sung.eco_analysis.service.KeywordAnalysisService;
-import sung.eco_analysis.service.NaverNewsService;
+import sung.eco_analysis.service.NewsArchiveService;
 import sung.eco_analysis.service.SnapshotService;
 
 import java.time.LocalDate;
@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 public class WebController {
 
     private final ExchangeRateService exchangeRateService;
-    private final NaverNewsService naverNewsService;
+    private final NewsArchiveService newsArchiveService;
     private final KeywordAnalysisService keywordAnalysisService;
     private final SnapshotService snapshotService;
 
@@ -57,8 +57,9 @@ public class WebController {
             }
         }
 
-        // 뉴스 조회 및 키워드 분석 (100건 - 날짜별 매핑용)
-        List<NaverNewsItem> allNews = naverNewsService.fetchExchangeRateNews(100);
+        // 뉴스: 최신 기사 적재(멱등) 후 아카이브에서 최신 100건 조회 (키워드/표시용)
+        newsArchiveService.ingest();
+        List<NaverNewsItem> allNews = newsArchiveService.getLatestNews(100);
         if (allNews.isEmpty()) {
             warnings.add("네이버 뉴스를 일시적으로 불러오지 못했습니다. 잠시 후 새로고침해 주세요.");
         }
@@ -86,8 +87,9 @@ public class WebController {
         // 분석 요약
         String summary = keywordAnalysisService.generateSummary(keywords, currentRate, history);
 
-        // 날짜별 환율 변동 원인 분석
-        List<RateChangeEvent> changeEvents = keywordAnalysisService.analyzeRateChangeEvents(history, allNews);
+        // 날짜별 환율 변동 원인 분석 (넓은 날짜 커버리지를 위해 아카이브 전체 최근 90일 사용)
+        List<NaverNewsItem> archivedNews = newsArchiveService.getRecentNews(90);
+        List<RateChangeEvent> changeEvents = keywordAnalysisService.analyzeRateChangeEvents(history, archivedNews);
 
         // 압력 지수(현재 뉴스) + 적중률(누적 스냅샷)
         int[] acc = snapshotService.getAccuracyStats();  // [matched, evaluated]

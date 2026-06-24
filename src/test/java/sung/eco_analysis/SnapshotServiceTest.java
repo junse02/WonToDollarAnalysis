@@ -11,7 +11,7 @@ import sung.eco_analysis.entity.RateHistory;
 import sung.eco_analysis.repository.DailySnapshotRepository;
 import sung.eco_analysis.service.ExchangeRateService;
 import sung.eco_analysis.service.KeywordAnalysisService;
-import sung.eco_analysis.service.NaverNewsService;
+import sung.eco_analysis.service.NewsArchiveService;
 import sung.eco_analysis.service.SnapshotService;
 
 import java.time.LocalDate;
@@ -29,7 +29,7 @@ class SnapshotServiceTest {
 
     @Mock DailySnapshotRepository snapshotRepository;
     @Mock ExchangeRateService exchangeRateService;
-    @Mock NaverNewsService naverNewsService;
+    @Mock NewsArchiveService newsArchiveService;
     @Mock KeywordAnalysisService keywordAnalysisService;
 
     @InjectMocks SnapshotService snapshotService;
@@ -126,7 +126,7 @@ class SnapshotServiceTest {
         LocalDate past = LocalDate.now().minusDays(2);
         LocalDate next = LocalDate.now().minusDays(1);
 
-        when(naverNewsService.fetchExchangeRateNews(100)).thenReturn(List.of());
+        when(newsArchiveService.getRecentNews(90)).thenReturn(List.of());
         when(keywordAnalysisService.computeHistoricalPressureIndex(anyList()))
                 .thenReturn(Map.of(past, 50));
         when(keywordAnalysisService.predictedDirection(50)).thenReturn(true);
@@ -153,7 +153,7 @@ class SnapshotServiceTest {
     void bootstrap_skipsExistingSnapshotDate() {
         LocalDate past = LocalDate.now().minusDays(2);
 
-        when(naverNewsService.fetchExchangeRateNews(100)).thenReturn(List.of());
+        when(newsArchiveService.getRecentNews(90)).thenReturn(List.of());
         when(keywordAnalysisService.computeHistoricalPressureIndex(anyList()))
                 .thenReturn(Map.of(past, 50));
         when(exchangeRateService.getRecentHistory(90)).thenReturn(List.of(

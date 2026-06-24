@@ -12,7 +12,7 @@ import sung.eco_analysis.dto.RateChangeEvent;
 import sung.eco_analysis.entity.RateHistory;
 import sung.eco_analysis.service.ExchangeRateService;
 import sung.eco_analysis.service.KeywordAnalysisService;
-import sung.eco_analysis.service.NaverNewsService;
+import sung.eco_analysis.service.NewsArchiveService;
 import sung.eco_analysis.service.SnapshotService;
 
 import java.time.format.DateTimeFormatter;
@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 public class ApiController {
 
     private final ExchangeRateService exchangeRateService;
-    private final NaverNewsService naverNewsService;
+    private final NewsArchiveService newsArchiveService;
     private final KeywordAnalysisService keywordAnalysisService;
     private final SnapshotService snapshotService;
 
@@ -54,12 +54,16 @@ public class ApiController {
 
     @GetMapping("/analysis")
     public ResponseEntity<Map<String, Object>> getAnalysis() {
-        List<NaverNewsItem> news = naverNewsService.fetchExchangeRateNews(100);
+        newsArchiveService.ingest();  // 최신 기사 적재(캐시 기반, 멱등) 후 아카이브에서 분석
+
+        List<NaverNewsItem> news = newsArchiveService.getLatestNews(100);
         Map<String, Integer> keywords = keywordAnalysisService.analyzeKeywords(news);
         String summary = keywordAnalysisService.generateSummary(keywords, null, null);
 
         List<RateHistory> history = exchangeRateService.getRecentHistory(30);
-        List<RateChangeEvent> events = keywordAnalysisService.analyzeRateChangeEvents(history, news);
+        // 변동 원인 분석은 더 넓은 날짜 커버리지를 위해 아카이브 전체(최근 90일)를 사용
+        List<NaverNewsItem> archivedNews = newsArchiveService.getRecentNews(90);
+        List<RateChangeEvent> events = keywordAnalysisService.analyzeRateChangeEvents(history, archivedNews);
         int[] acc = snapshotService.getAccuracyStats();
         AnalysisSummary analysis = keywordAnalysisService.buildAnalysisSummary(keywords, acc[0], acc[1]);
 

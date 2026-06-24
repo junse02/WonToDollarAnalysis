@@ -8,7 +8,7 @@ import sung.eco_analysis.dto.NaverNewsItem;
 import sung.eco_analysis.entity.RateHistory;
 import sung.eco_analysis.service.ExchangeRateService;
 import sung.eco_analysis.service.KeywordAnalysisService;
-import sung.eco_analysis.service.NaverNewsService;
+import sung.eco_analysis.service.NewsArchiveService;
 import sung.eco_analysis.service.SnapshotService;
 
 import java.time.LocalDateTime;
@@ -22,13 +22,13 @@ import static org.mockito.Mockito.when;
 class WebControllerTest {
 
     private final ExchangeRateService exchangeRateService = mock(ExchangeRateService.class);
-    private final NaverNewsService naverNewsService = mock(NaverNewsService.class);
+    private final NewsArchiveService newsArchiveService = mock(NewsArchiveService.class);
     private final SnapshotService snapshotService = mock(SnapshotService.class);
     // 분석 서비스는 외부 의존성이 없으므로 실제 객체 사용
     private final KeywordAnalysisService keywordAnalysisService = new KeywordAnalysisService();
 
     private final WebController controller = new WebController(
-            exchangeRateService, naverNewsService, keywordAnalysisService, snapshotService);
+            exchangeRateService, newsArchiveService, keywordAnalysisService, snapshotService);
 
     private NaverNewsItem news(String title) {
         NaverNewsItem item = new NaverNewsItem();
@@ -46,7 +46,7 @@ class WebControllerTest {
         when(exchangeRateService.getLatestStoredRate())
                 .thenReturn(new RateHistory("USD/KRW", 1500.0, LocalDateTime.of(2026, 6, 16, 12, 0)));
         when(exchangeRateService.getRecentHistory(30)).thenReturn(List.of());
-        when(naverNewsService.fetchExchangeRateNews(100)).thenReturn(List.of(news("달러 환율 상승")));
+        when(newsArchiveService.getLatestNews(100)).thenReturn(List.of(news("달러 환율 상승")));
         when(snapshotService.getAccuracyStats()).thenReturn(new int[]{0, 0});
 
         Model model = new ExtendedModelMap();
@@ -65,7 +65,7 @@ class WebControllerTest {
     void newsFailure_warnsButRenders() {
         when(exchangeRateService.fetchCurrentUsdKrw()).thenReturn(1490.0);
         when(exchangeRateService.getRecentHistory(30)).thenReturn(List.of());
-        when(naverNewsService.fetchExchangeRateNews(100)).thenReturn(List.of());
+        when(newsArchiveService.getLatestNews(100)).thenReturn(List.of());
         when(snapshotService.getAccuracyStats()).thenReturn(new int[]{0, 0});
 
         Model model = new ExtendedModelMap();
@@ -82,7 +82,7 @@ class WebControllerTest {
     void allHealthy_noWarnings() {
         when(exchangeRateService.fetchCurrentUsdKrw()).thenReturn(1490.0);
         when(exchangeRateService.getRecentHistory(30)).thenReturn(List.of());
-        when(naverNewsService.fetchExchangeRateNews(100)).thenReturn(List.of(news("환율 분석")));
+        when(newsArchiveService.getLatestNews(100)).thenReturn(List.of(news("환율 분석")));
         when(snapshotService.getAccuracyStats()).thenReturn(new int[]{0, 0});
 
         Model model = new ExtendedModelMap();

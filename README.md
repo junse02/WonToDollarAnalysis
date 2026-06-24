@@ -8,6 +8,7 @@ USD/KRW 환율을 수집·시각화하고, 환율 관련 뉴스 키워드를 분
 - **실시간 환율 조회** — Frankfurter API로 USD/KRW 환율을 가져옵니다 (API 키 불필요).
 - **환율 히스토리 차트** — 최근 30일 환율을 일자별로 집계해 그래프로 표시합니다.
 - **뉴스 키워드 분석** — 네이버 뉴스 검색 API에서 환율 관련 기사를 수집해 키워드 빈도를 분석합니다.
+- **뉴스 아카이브** — 수집한 기사를 `link` 기준으로 중복 제거해 DB에 누적 저장합니다. API는 최근 기사만 주지만, 가동 기간이 길수록 부트스트랩·변동 원인·압력 지수 분석이 더 긴 히스토리를 활용합니다.
 - **변동 원인 분석** — 날짜별 환율 변동과 그 시점의 뉴스 키워드를 매핑해 변동 원인을 추정합니다.
 - **압력 지수 / 적중률** — 뉴스 기반 환율 압력 지수를 산출하고, 일별 스냅샷으로 예측 적중률을 누적 평가합니다.
 - **자동 갱신** — 앱 시작 시 과거 데이터를 백필하고, 매 1시간마다 환율·스냅샷을 갱신합니다.
@@ -116,7 +117,7 @@ src/main/java/sung/eco_analysis/
 ├── config/        # API 설정 프로퍼티, RestClient 등 빈 구성
 ├── controller/    # 웹(Thymeleaf) / REST API / 전역 예외 처리
 ├── dto/           # 외부 API 응답 및 분석 결과 DTO
-├── entity/        # RateHistory, DailySnapshot (JPA)
+├── entity/        # RateHistory, DailySnapshot, NewsArticle (JPA)
 ├── repository/    # Spring Data JPA 리포지토리
 ├── scheduler/     # 환율·스냅샷 자동 갱신 스케줄러
 └── service/       # 환율 조회, 뉴스 수집, 키워드 분석, 스냅샷 평가

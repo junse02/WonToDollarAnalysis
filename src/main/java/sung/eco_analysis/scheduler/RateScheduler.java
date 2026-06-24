@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import sung.eco_analysis.service.ExchangeRateService;
+import sung.eco_analysis.service.NewsArchiveService;
 import sung.eco_analysis.service.SnapshotService;
 
 @Component
@@ -14,6 +15,7 @@ import sung.eco_analysis.service.SnapshotService;
 public class RateScheduler {
 
     private final ExchangeRateService exchangeRateService;
+    private final NewsArchiveService newsArchiveService;
     private final SnapshotService snapshotService;
 
     // 앱 시작 시 누락된 과거 데이터 백필 + 오늘 스냅샷 캡처/평가
@@ -26,6 +28,9 @@ public class RateScheduler {
         long after = exchangeRateService.getStoredCount();
         log.info("초기 환율 데이터 로드 완료 (총 {}건, 신규 {}건)", after, after - before);
 
+        // 뉴스 아카이브에 최신 기사 적재 (DB에 누적 → 부트스트랩이 더 긴 히스토리 활용)
+        newsArchiveService.ingest();
+
         // 스냅샷: 백필된 과거 환율+뉴스로 소급 생성 → 미평가 건 평가 → 오늘 캡처
         snapshotService.bootstrapFromHistory();
         snapshotService.evaluatePending();
@@ -37,6 +42,7 @@ public class RateScheduler {
     public void scheduledRateFetch() {
         log.info("스케줄러: 환율 데이터 갱신");
         exchangeRateService.fetchAndSaveCurrentRate();
+        newsArchiveService.ingest();
         snapshotService.evaluatePending();
         snapshotService.captureToday();
     }
