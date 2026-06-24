@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>국내 상위 종목 분석</title>
+    <script>
+        (function () {
+            var t = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-bs-theme', t);
+        })();
+    </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+
+<nav class="navbar navbar-dark px-4">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-bar-chart-line fs-5"></i>
+        <span class="navbar-brand mb-0 fw-bold">국내 상위 종목 분석</span>
+    </div>
+    <div class="d-flex align-items-center gap-3">
+        <a href="/" class="btn btn-sm btn-outline-light">
+            <i class="bi bi-currency-exchange me-1"></i>환율 분석
+        </a>
+        <span class="text-light-muted small">
+            <i class="bi bi-clock me-1"></i>
+            마지막 조회: <span th:text="${lastUpdated}">-</span>
+        </span>
+        <button class="btn btn-sm btn-outline-light" onclick="toggleTheme()" title="테마 전환">
+            <i class="bi bi-moon-stars"></i>
+        </button>
+        <button class="btn btn-sm btn-outline-light" onclick="location.reload()">
+            <i class="bi bi-arrow-clockwise me-1"></i>새로고침
+        </button>
+    </div>
+</nav>
+
+<div class="container-fluid px-4 mt-4">
+
+    <div th:unless="${anyAvailable}" class="alert alert-warning d-flex align-items-center" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        시세를 일시적으로 불러오지 못했습니다. 잠시 후 새로고침해 주세요.
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-6 col-lg-4" th:each="s, iter : ${stocks}">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span class="fw-bold"><i class="bi bi-building me-2"></i><span th:text="${s.name}">종목</span></span>
+                    <span class="text-muted small" th:text="${s.symbol}">000000.KS</span>
+                </div>
+                <div class="card-body">
+                    <!-- 시세 -->
+                    <div th:if="${s.available}" class="d-flex align-items-baseline justify-content-between mb-2">
+                        <span class="rate-display"
+                              th:text="${#numbers.formatInteger(s.price, 0, 'COMMA')} + ' ₩'">0</span>
+                        <span class="fw-bold"
+                              th:classappend="${s.up} ? 'text-danger' : 'text-primary'"
+                              th:text="(${s.up} ? '▲ ' : '▼ ') + (${s.changeAmount != null} ? ${#numbers.formatDecimal(s.changeAmount, 1, 'COMMA', 0, 'POINT')} : '-') + ' (' + (${s.changePercent != null} ? ${#numbers.formatDecimal(s.changePercent, 1, 2)} : '-') + '%)'">
+                            변동
+                        </span>
+                    </div>
+                    <div th:unless="${s.available}" class="text-muted mb-2">
+                        <span class="rate-display">N/A</span>
+                    </div>
+
+                    <!-- 감성 배지 -->
+                    <div class="mb-2">
+                        <span class="badge"
+                              th:classappend="${s.sentimentScore >= 2} ? 'bg-danger' : (${s.sentimentScore <= -2} ? 'bg-primary' : 'bg-secondary')"
+                              th:text="'뉴스 감성: ' + ${s.sentimentLabel}">감성</span>
+                        <span class="text-muted small ms-1" th:text="'(' + (${s.sentimentScore >= 0} ? '+' : '') + ${s.sentimentScore} + ')'">(0)</span>
+                    </div>
+
+                    <!-- 미니 차트 -->
+                    <div th:if="${s.available and !#lists.isEmpty(s.chartData)}">
+                        <canvas th:id="'stockChart' + ${iter.index}" height="90"></canvas>
+                    </div>
+
+                    <!-- 헤드라인 -->
+                    <div class="mt-3" th:if="${!#lists.isEmpty(s.headlines)}">
+                        <small class="text-muted d-block mb-1">관련 뉴스</small>
+                        <div th:each="h : ${s.headlines}" class="event-news-item">
+                            <i class="bi bi-dot"></i>
+                            <a th:href="${h.link}" th:text="${h.title}" target="_blank" class="news-title">제목</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <p class="text-muted small">
+        시세: Yahoo Finance (일별, 지연 가능) · 감성: 종목 뉴스 호재/악재 키워드 기반 ·
+        종목은 시가총액 상위권 기준(변동 가능)
+    </p>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<script>
+    function toggleTheme() {
+        var cur = document.documentElement.getAttribute('data-bs-theme');
+        var next = cur === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-bs-theme', next);
+        localStorage.setItem('theme', next);
+    }
+</script>
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    const STOCKS = /*[[${stocks}]]*/ [];
+    STOCKS.forEach(function (s, i) {
+        if (!s.available || !s.chartData || s.chartData.length === 0) return;
+        const el = document.getElementById('stockChart' + i);
+        if (!el) return;
+        const up = s.up;
+        const color = up ? '#dc3545' : '#0d6efd';  // 상승=빨강, 하락=파랑
+        new Chart(el, {
+            type: 'line',
+            data: {
+                labels: s.chartLabels,
+                datasets: [{
+                    data: s.chartData,
+                    borderColor: color,
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0.25
+                }]
+            },
+            options: {
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { display: false },
+                    y: { display: true, ticks: { maxTicksLimit: 4 } }
+                },
+                maintainAspectRatio: false
+            }
+        });
+    });
+    /*]]>*/
+</script>
+
+</body>
+</html>

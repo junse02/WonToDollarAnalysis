@@ -12,6 +12,7 @@ USD/KRW 환율을 수집·시각화하고, 환율 관련 뉴스 키워드를 분
 - **LLM 카테고리 분류 (선택)** — Google Gemini로 기사를 원인 카테고리로 분류해 키워드 부분문자열 매칭의 한계(부정문 오탐·문맥 무시)를 보완합니다. `GEMINI_API_KEY`가 없으면 자동으로 키워드 매칭으로 폴백합니다.
 - **변동 원인 분석** — 날짜별 환율 변동과 그 시점의 뉴스 키워드를 매핑해 변동 원인을 추정합니다.
 - **압력 지수 / 적중률** — 뉴스 기반 환율 압력 지수를 산출하고, 일별 스냅샷으로 예측 적중률을 누적 평가합니다.
+- **국내 상위 종목 분석** (`/stocks`) — 시가총액 상위 5개 종목의 일별 시세(Yahoo Finance, 무인증)와 30일 차트, 종목 뉴스 호재/악재 키워드 감성을 함께 보여줍니다.
 - **자동 갱신** — 앱 시작 시 과거 데이터를 백필하고, 매 1시간마다 환율·스냅샷을 갱신합니다.
 - **장애 대응** — 외부 API 응답 지연 시 DB의 마지막 저장값으로 폴백하고 안내 문구를 노출합니다.
 
@@ -24,7 +25,7 @@ USD/KRW 환율을 수집·시각화하고, 환율 관련 뉴스 키워드를 분
 | 데이터베이스 | H2 (파일 모드, `./data/ecoanalysis.mv.db`) |
 | 캐시 | Caffeine (5분 TTL) |
 | 빌드 | Gradle (Wrapper 포함) |
-| 외부 API | [Frankfurter](https://api.frankfurter.app) (환율), 네이버 뉴스 검색 API, [Google Gemini](https://ai.google.dev) (선택, 뉴스 분류) |
+| 외부 API | [Frankfurter](https://api.frankfurter.app) (환율), 네이버 뉴스 검색 API, [Yahoo Finance](https://finance.yahoo.com) (국내 종목 시세, 무인증), [Google Gemini](https://ai.google.dev) (선택, 뉴스 분류) |
 | 배포 | Docker / Docker Compose, GitHub Actions (CI·CD), GHCR |
 
 ## 시작하기
@@ -83,6 +84,8 @@ export GEMINI_API_KEY=xxxx
 | `GET` | `/api/rate/current` | 현재 USD/KRW 환율 |
 | `GET` | `/api/rate/history?days=30` | 일자별 환율 히스토리 (1~365일) |
 | `GET` | `/api/analysis` | 키워드 분석 + 변동 원인 + 압력 지수/적중률 |
+| `GET` | `/stocks` | 국내 상위 종목 분석 페이지 (Thymeleaf) |
+| `GET` | `/api/stocks` | 상위 5개 종목 시세 + 뉴스 감성 (JSON) |
 
 ## Docker로 실행
 

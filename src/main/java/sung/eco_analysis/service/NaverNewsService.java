@@ -31,9 +31,19 @@ public class NaverNewsService {
 
     private static final String NAVER_NEWS_URL = "https://openapi.naver.com/v1/search/news.json";
 
-    @Cacheable(value = "news", key = "#display", unless = "#result == null || #result.isEmpty()")
+    @Cacheable(value = "news", key = "'fx|' + #display", unless = "#result == null || #result.isEmpty()")
     public List<NaverNewsItem> fetchExchangeRateNews(int display) {
-        String encodedQuery = URLEncoder.encode("달러 환율", StandardCharsets.UTF_8);
+        return doFetch("달러 환율", display);
+    }
+
+    // 임의 검색어로 뉴스 조회 (종목명 등). 외부 호출이라 캐시 프록시가 적용된다.
+    @Cacheable(value = "news", key = "#query + '|' + #display", unless = "#result == null || #result.isEmpty()")
+    public List<NaverNewsItem> fetchNews(String query, int display) {
+        return doFetch(query, display);
+    }
+
+    private List<NaverNewsItem> doFetch(String query, int display) {
+        String encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8);
         String url = String.format("%s?query=%s&display=%d&sort=date", NAVER_NEWS_URL, encodedQuery, display);
         // 이미 인코딩된 문자열을 URI 객체로 넘겨 RestTemplate의 이중 인코딩 방지
         URI uri = URI.create(url);
