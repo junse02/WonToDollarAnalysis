@@ -39,7 +39,9 @@ public class NewsClassificationService {
     private final ObjectMapper objectMapper;
 
     private static final String BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
-    private static final int BATCH_SIZE = 25;       // 1회 호출당 기사 수
+    // 1회 호출당 기사 수. 무료 등급은 '일일 요청 수'가 빡빡하므로 한 요청에 많이 담아 호출 횟수를 줄인다.
+    // (maxOutputTokens는 설정하지 않아 모델 기본 최대치를 사용 → 100건 출력도 잘리지 않음)
+    private static final int BATCH_SIZE = 100;
     private static final int MAX_RETRIES = 3;        // 5xx 시 추가 재시도 횟수 (총 4회 시도)
     private static final long RETRY_BACKOFF_MS = 2000;  // 선형 백오프: 2s, 4s, 6s
 
