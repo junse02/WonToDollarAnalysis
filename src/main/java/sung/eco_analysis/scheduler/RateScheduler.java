@@ -30,6 +30,7 @@ public class RateScheduler {
 
         // 뉴스 아카이브에 최신 기사 적재 (DB에 누적 → 부트스트랩이 더 긴 히스토리 활용)
         newsArchiveService.ingest();
+        newsArchiveService.reclassifyPending();  // 미분류 기사 소급 분류 (키 활성 시)
 
         // 스냅샷: 백필된 과거 환율+뉴스로 소급 생성 → 미평가 건 평가 → 오늘 캡처
         snapshotService.bootstrapFromHistory();
@@ -43,6 +44,7 @@ public class RateScheduler {
         log.info("스케줄러: 환율 데이터 갱신");
         exchangeRateService.fetchAndSaveCurrentRate();
         newsArchiveService.ingest();
+        newsArchiveService.reclassifyPending();  // 미분류 기사 소급 분류 (503 등 실패분 재시도 포함)
         snapshotService.evaluatePending();
         snapshotService.captureToday();
     }

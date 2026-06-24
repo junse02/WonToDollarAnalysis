@@ -40,8 +40,8 @@ public class NewsClassificationService {
 
     private static final String BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
     private static final int BATCH_SIZE = 25;       // 1회 호출당 기사 수
-    private static final int MAX_RETRIES = 2;        // 5xx 시 추가 재시도 횟수 (총 3회 시도)
-    private static final long RETRY_BACKOFF_MS = 1500;
+    private static final int MAX_RETRIES = 3;        // 5xx 시 추가 재시도 횟수 (총 4회 시도)
+    private static final long RETRY_BACKOFF_MS = 2000;  // 선형 백오프: 2s, 4s, 6s
 
     private boolean enabled;
     private Set<String> validCategories;

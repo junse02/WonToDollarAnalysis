@@ -18,6 +18,9 @@ public interface NewsArticleRepository extends JpaRepository<NewsArticle, Long> 
     // 최근 N일치 (부트스트랩·날짜별 변동 원인 분석용)
     List<NewsArticle> findByPublishedAtAfterOrderByPublishedAtDesc(LocalDateTime after);
 
+    // 미분류 기사 (LLM 분류 백필용, 최신순 limit건)
+    List<NewsArticle> findByClassifiedFalseOrderByPublishedAtDesc(Pageable pageable);
+
     // 배치 dedup: 주어진 link 중 이미 저장된 것만 반환 (건별 existsByLink 대신 1회 쿼리)
     @Query("select n.link from NewsArticle n where n.link in :links")
     List<String> findExistingLinks(@Param("links") Collection<String> links);

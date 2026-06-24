@@ -78,6 +78,44 @@ public class NewsArchiveService {
         return toSave.size();
     }
 
+    // 1회 백필에서 재분류할 최대 기사 수 (비용·시작 지연 제한). 남은 건은 다음 주기에 처리.
+    private static final int RECLASSIFY_MAX = 100;
+
+    /**
+     * 키가 없던 시절 등으로 분류되지 못한(classified=false) 기사를 소급 분류한다.
+     * 최신순 최대 {@value #RECLASSIFY_MAX}건을 묶어 처리하고, 503 등으로 실패한 건은
+     * classified=false로 남아 다음 호출에서 자동 재시도된다.
+     * @return 이번에 새로 분류된 기사 수
+     */
+    @Transactional
+    public int reclassifyPending() {
+        if (!newsClassificationService.isEnabled()) return 0;
+
+        List<NewsArticle> pending = newsArticleRepository
+                .findByClassifiedFalseOrderByPublishedAtDesc(PageRequest.of(0, RECLASSIFY_MAX));
+        if (pending.isEmpty()) return 0;
+
+        List<NaverNewsItem> items = pending.stream()
+                .map(NewsArticle::toItem)  // 미분류라 categories는 null, 제목·요약은 채워짐
+                .collect(Collectors.toList());
+        Map<Integer, List<String>> labels = newsClassificationService.classify(items);
+        if (labels.isEmpty()) return 0;
+
+        int classified = 0;
+        for (int i = 0; i < pending.size(); i++) {
+            List<String> cats = labels.get(i);
+            if (cats != null) {
+                pending.get(i).applyCategories(cats);
+                classified++;
+            }
+        }
+        if (classified > 0) {
+            newsArticleRepository.saveAll(pending);
+            log.info("미분류 기사 재분류: {}건 (대상 {}건)", classified, pending.size());
+        }
+        return classified;
+    }
+
     /** 현재 시점 분석용: 발행 시각 최신순 limit건. (DB가 비어 있으면 빈 목록) */
     public List<NaverNewsItem> getLatestNews(int limit) {
         return newsArticleRepository.findByOrderByPublishedAtDesc(PageRequest.of(0, limit)).stream()
