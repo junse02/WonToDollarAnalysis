@@ -43,7 +43,12 @@ public class StockService {
             new StockRef("SK하이닉스", "000660.KS"),
             new StockRef("LG에너지솔루션", "373220.KS"),
             new StockRef("삼성바이오로직스", "207940.KS"),
-            new StockRef("현대차", "005380.KS")
+            new StockRef("현대차", "005380.KS"),
+            new StockRef("기아", "000270.KS"),
+            new StockRef("셀트리온", "068270.KS"),
+            new StockRef("KB금융", "105560.KS"),
+            new StockRef("네이버", "035420.KS"),
+            new StockRef("신한지주", "055550.KS")
     );
 
     public List<StockQuote> getTopStocks() {
