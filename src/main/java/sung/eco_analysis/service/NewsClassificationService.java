@@ -1,13 +1,15 @@
 package sung.eco_analysis.service;
 
-import com.anthropic.client.AnthropicClient;
-import com.anthropic.client.okhttp.AnthropicOkHttpClient;
-import com.anthropic.models.messages.MessageCreateParams;
-import com.anthropic.models.messages.StructuredMessageCreateParams;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 import sung.eco_analysis.config.ApiProperties;
 import sung.eco_analysis.dto.NaverNewsItem;
 
@@ -19,9 +21,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Claude(Anthropic)로 환율 뉴스 기사를 카테고리 분류한다.
+ * Google Gemini으로 환율 뉴스 기사를 카테고리 분류한다.
  * 단순 키워드 부분문자열 매칭의 한계(부정문 오탐, 문맥 무시)를 보완한다.
- * <p>API 키가 설정되지 않으면 클라이언트를 만들지 않고 빈 결과를 반환해,
+ * <p>API 키가 설정되지 않으면 호출하지 않고 빈 결과를 반환해,
  * 호출 측({@link KeywordAnalysisService})이 기존 키워드 매칭으로 폴백하도록 한다.
  */
 @Service
@@ -31,32 +33,29 @@ public class NewsClassificationService {
 
     private final ApiProperties apiProperties;
     private final KeywordAnalysisService keywordAnalysisService;
+    private final RestTemplate restTemplate;
+    private final ObjectMapper objectMapper;
 
-    private AnthropicClient client;   // 키 없으면 null (분류 비활성)
+    private static final String BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
+    private static final int BATCH_SIZE = 25;  // 1회 호출당 기사 수
+
+    private boolean enabled;
     private Set<String> validCategories;
-
-    private static final int BATCH_SIZE = 25;     // 1회 API 호출당 기사 수
-    private static final long MAX_TOKENS = 4096L;  // 분류 출력은 작음 (비스트리밍)
 
     @PostConstruct
     void init() {
         validCategories = new HashSet<>(keywordAnalysisService.categoryNames());
-        String key = apiProperties.getAnthropic().getApiKey();
-        if (key == null || key.isBlank()) {
-            log.info("Anthropic API 키 미설정 → 뉴스 LLM 분류 비활성화 (키워드 매칭 폴백)");
-            return;
-        }
-        try {
-            client = AnthropicOkHttpClient.builder().apiKey(key.trim()).build();
-            log.info("뉴스 LLM 분류 활성화 (model={})", apiProperties.getAnthropic().getModel());
-        } catch (Exception e) {
-            log.warn("Anthropic 클라이언트 초기화 실패 → 키워드 매칭 폴백: {}", e.getMessage());
-            client = null;
+        String key = apiProperties.getGemini().getApiKey();
+        enabled = (key != null && !key.isBlank());
+        if (enabled) {
+            log.info("뉴스 LLM 분류 활성화 (Gemini, model={})", apiProperties.getGemini().getModel());
+        } else {
+            log.info("Gemini API 키 미설정 → 뉴스 LLM 분류 비활성화 (키워드 매칭 폴백)");
         }
     }
 
     public boolean isEnabled() {
-        return client != null;
+        return enabled;
     }
 
     /**
@@ -65,15 +64,14 @@ public class NewsClassificationService {
      */
     public Map<Integer, List<String>> classify(List<NaverNewsItem> items) {
         Map<Integer, List<String>> out = new HashMap<>();
-        if (client == null || items.isEmpty()) return out;
+        if (!enabled || items.isEmpty()) return out;
 
         for (int start = 0; start < items.size(); start += BATCH_SIZE) {
             int end = Math.min(start + BATCH_SIZE, items.size());
             List<NaverNewsItem> slice = items.subList(start, end);
             try {
-                ClassificationResult res = callApi(slice);
-                if (res == null || res.articles() == null) continue;
-                for (ClassifiedItem ci : res.articles()) {
+                List<ClassifiedItem> results = callGemini(slice);
+                for (ClassifiedItem ci : results) {
                     int local = ci.index();
                     if (local < 0 || local >= slice.size()) continue;  // 모델 인덱스 방어
                     List<String> valid = (ci.categories() == null) ? List.of()
@@ -90,25 +88,59 @@ public class NewsClassificationService {
         return out;
     }
 
-    private ClassificationResult callApi(List<NaverNewsItem> slice) {
-        String prompt = buildPrompt(slice);
-        StructuredMessageCreateParams<ClassificationResult> params = MessageCreateParams.builder()
-                .model(apiProperties.getAnthropic().getModel())
-                .maxTokens(MAX_TOKENS)
-                .outputConfig(ClassificationResult.class)
-                .addUserMessage(prompt)
-                .build();
+    private List<ClassifiedItem> callGemini(List<NaverNewsItem> slice) throws Exception {
+        String url = String.format("%s/%s:generateContent",
+                BASE_URL, apiProperties.getGemini().getModel());
 
-        return client.messages().create(params).content().stream()
-                .flatMap(cb -> cb.text().stream())
-                .map(t -> t.text())   // 구조화 출력 → 타입드 결과
-                .findFirst()
-                .orElse(null);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("x-goog-api-key", apiProperties.getGemini().getApiKey().trim());
+
+        Map<String, Object> body = Map.of(
+                "contents", List.of(Map.of("parts", List.of(Map.of("text", buildPrompt(slice))))),
+                "generationConfig", Map.of(
+                        "responseMimeType", "application/json",
+                        "responseSchema", responseSchema()
+                )
+        );
+
+        GeminiResponse resp = restTemplate.exchange(
+                url, org.springframework.http.HttpMethod.POST,
+                new HttpEntity<>(body, headers), GeminiResponse.class).getBody();
+
+        String json = extractText(resp);
+        if (json == null || json.isBlank()) return List.of();
+        // 구조화 출력은 최상위가 배열: [{index, categories}, ...]
+        ClassifiedItem[] arr = objectMapper.readValue(json, ClassifiedItem[].class);
+        return List.of(arr);
+    }
+
+    // 응답 JSON: candidates[0].content.parts[0].text
+    private String extractText(GeminiResponse resp) {
+        if (resp == null || resp.candidates == null || resp.candidates.isEmpty()) return null;
+        GeminiResponse.Content content = resp.candidates.get(0).content;
+        if (content == null || content.parts == null || content.parts.isEmpty()) return null;
+        return content.parts.get(0).text;
+    }
+
+    // 응답을 [{index:INTEGER, categories:[STRING]}] 배열로 강제하는 스키마
+    private Map<String, Object> responseSchema() {
+        return Map.of(
+                "type", "ARRAY",
+                "items", Map.of(
+                        "type", "OBJECT",
+                        "properties", Map.of(
+                                "index", Map.of("type", "INTEGER"),
+                                "categories", Map.of("type", "ARRAY", "items", Map.of("type", "STRING"))
+                        ),
+                        "required", List.of("index", "categories")
+                )
+        );
     }
 
     private String buildPrompt(List<NaverNewsItem> slice) {
-        String categoryList = String.join("\n", keywordAnalysisService.categoryNames().stream()
-                .map(c -> "- " + c).collect(Collectors.toList()));
+        String categoryList = keywordAnalysisService.categoryNames().stream()
+                .map(c -> "- " + c).collect(Collectors.joining("\n"));
 
         StringBuilder sb = new StringBuilder();
         sb.append("다음 한국어 뉴스(원/달러 환율 관련)를 환율 변동 '원인' 카테고리로 분류하라.\n");
@@ -123,14 +155,31 @@ public class NewsClassificationService {
               .append(item.getCleanTitle()).append(" — ")
               .append(item.getCleanDescription()).append("\n");
         }
-        sb.append("\n각 기사 index와 해당 카테고리 라벨 배열을 반환하라.");
+        sb.append("\n각 기사의 index와 해당 카테고리 라벨 배열로 구성된 JSON 배열을 반환하라.");
         return sb.toString();
     }
 
-    // ── 구조화 출력 스키마 ──
     // 기사 1건의 분류 결과 (index = 입력 슬라이스 내 인덱스)
     public record ClassifiedItem(int index, List<String> categories) {}
 
-    // 배치 전체 분류 결과
-    public record ClassificationResult(List<ClassifiedItem> articles) {}
+    // ── Gemini generateContent 응답 (필요 필드만) ──
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    static class GeminiResponse {
+        public List<Candidate> candidates;
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        static class Candidate {
+            public Content content;
+        }
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        static class Content {
+            public List<Part> parts;
+        }
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        static class Part {
+            public String text;
+        }
+    }
 }

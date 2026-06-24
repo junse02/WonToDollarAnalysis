@@ -9,7 +9,7 @@ USD/KRW 환율을 수집·시각화하고, 환율 관련 뉴스 키워드를 분
 - **환율 히스토리 차트** — 최근 30일 환율을 일자별로 집계해 그래프로 표시합니다.
 - **뉴스 키워드 분석** — 네이버 뉴스 검색 API에서 환율 관련 기사를 수집해 키워드 빈도를 분석합니다.
 - **뉴스 아카이브** — 수집한 기사를 `link` 기준으로 중복 제거해 DB에 누적 저장합니다. API는 최근 기사만 주지만, 가동 기간이 길수록 부트스트랩·변동 원인·압력 지수 분석이 더 긴 히스토리를 활용합니다.
-- **LLM 카테고리 분류 (선택)** — Anthropic Claude로 기사를 원인 카테고리로 분류해 키워드 부분문자열 매칭의 한계(부정문 오탐·문맥 무시)를 보완합니다. `ANTHROPIC_API_KEY`가 없으면 자동으로 키워드 매칭으로 폴백합니다.
+- **LLM 카테고리 분류 (선택)** — Google Gemini로 기사를 원인 카테고리로 분류해 키워드 부분문자열 매칭의 한계(부정문 오탐·문맥 무시)를 보완합니다. `GEMINI_API_KEY`가 없으면 자동으로 키워드 매칭으로 폴백합니다.
 - **변동 원인 분석** — 날짜별 환율 변동과 그 시점의 뉴스 키워드를 매핑해 변동 원인을 추정합니다.
 - **압력 지수 / 적중률** — 뉴스 기반 환율 압력 지수를 산출하고, 일별 스냅샷으로 예측 적중률을 누적 평가합니다.
 - **자동 갱신** — 앱 시작 시 과거 데이터를 백필하고, 매 1시간마다 환율·스냅샷을 갱신합니다.
@@ -24,7 +24,7 @@ USD/KRW 환율을 수집·시각화하고, 환율 관련 뉴스 키워드를 분
 | 데이터베이스 | H2 (파일 모드, `./data/ecoanalysis.mv.db`) |
 | 캐시 | Caffeine (5분 TTL) |
 | 빌드 | Gradle (Wrapper 포함) |
-| 외부 API | [Frankfurter](https://api.frankfurter.app) (환율), 네이버 뉴스 검색 API, Anthropic Claude (선택, 뉴스 분류) |
+| 외부 API | [Frankfurter](https://api.frankfurter.app) (환율), 네이버 뉴스 검색 API, [Google Gemini](https://ai.google.dev) (선택, 뉴스 분류) |
 | 배포 | Docker / Docker Compose, GitHub Actions (CI·CD), GHCR |
 
 ## 시작하기
@@ -33,7 +33,7 @@ USD/KRW 환율을 수집·시각화하고, 환율 관련 뉴스 키워드를 분
 
 - JDK 21
 - 네이버 검색 API 키 ([네이버 개발자 센터](https://developers.naver.com)에서 발급)
-- (선택) Anthropic API 키 — 뉴스 LLM 분류용. 없으면 키워드 매칭으로 동작합니다.
+- (선택) Google Gemini API 키 ([Google AI Studio](https://aistudio.google.com)에서 발급) — 뉴스 LLM 분류용. 없으면 키워드 매칭으로 동작합니다.
 
 ### 1. 네이버 API 키 설정
 
@@ -50,9 +50,11 @@ api.naver.client-secret=YOUR_NAVER_CLIENT_SECRET
 export NAVER_CLIENT_ID=xxxx
 export NAVER_CLIENT_SECRET=xxxx
 
-# (선택) Claude 뉴스 분류 활성화 — 미설정 시 키워드 매칭 폴백
-export ANTHROPIC_API_KEY=sk-ant-xxxx
-# export ANTHROPIC_MODEL=claude-opus-4-8   # 기본값. 비용 절감 시 claude-haiku-4-5 등으로 교체 가능
+# (선택) Gemini 뉴스 분류 활성화 — 미설정 시 키워드 매칭 폴백
+export GEMINI_API_KEY=xxxx
+# 기본 모델은 gemini-2.5-flash (무료 등급에서 동작).
+# gemini-2.5-pro는 결제(billing) 활성화가 필요하다 — 무료 등급 한도가 0.
+# export GEMINI_MODEL=gemini-2.5-pro
 ```
 
 ### 2. 로컬 실행

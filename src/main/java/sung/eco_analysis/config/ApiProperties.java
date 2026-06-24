@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 public class ApiProperties {
 
     private Naver naver = new Naver();
-    private Anthropic anthropic = new Anthropic();
+    private Gemini gemini = new Gemini();
 
     @Getter
     @Setter
@@ -23,9 +23,10 @@ public class ApiProperties {
 
     @Getter
     @Setter
-    public static class Anthropic {
+    public static class Gemini {
         // 비어 있으면 LLM 분류 비활성화 (키워드 매칭으로 폴백)
         private String apiKey;
-        private String model = "claude-opus-4-8";
+        // 무료 등급에서 동작하는 flash 기본값. pro(gemini-2.5-pro)는 결제 활성화 필요.
+        private String model = "gemini-2.5-flash";
     }
 }
