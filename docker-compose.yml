@@ -11,6 +11,9 @@ services:
       SPRING_PROFILES_ACTIVE: prod
       NAVER_CLIENT_ID: ${NAVER_CLIENT_ID:?NAVER_CLIENT_ID 필요}
       NAVER_CLIENT_SECRET: ${NAVER_CLIENT_SECRET:?NAVER_CLIENT_SECRET 필요}
+      # 선택: 뉴스 LLM 분류. 미설정 시 빈 값 → 키워드 매칭으로 폴백
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
     volumes:
       - app-data:/app/data         # H2 파일 DB 영속
     restart: unless-stopped

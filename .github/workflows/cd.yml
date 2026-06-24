@@ -78,6 +78,7 @@ jobs:
         env:
           NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
           NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GHCR_USERNAME: ${{ github.actor }}
           GHCR_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
         with:
@@ -85,7 +86,7 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT }}
-          envs: NAVER_CLIENT_ID,NAVER_CLIENT_SECRET,GHCR_USERNAME,GHCR_TOKEN
+          envs: NAVER_CLIENT_ID,NAVER_CLIENT_SECRET,GEMINI_API_KEY,GHCR_USERNAME,GHCR_TOKEN
           script: |
             set -e
             cd ~/wontodollar
@@ -97,6 +98,7 @@ jobs:
             cat > .env <<EOF
             NAVER_CLIENT_ID=$NAVER_CLIENT_ID
             NAVER_CLIENT_SECRET=$NAVER_CLIENT_SECRET
+            GEMINI_API_KEY=$GEMINI_API_KEY
             EOF
             chmod 600 .env
             docker compose pull

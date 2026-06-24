@@ -15,6 +15,7 @@
 # 환경변수 준비
 export NAVER_CLIENT_ID=xxxx
 export NAVER_CLIENT_SECRET=xxxx
+export GEMINI_API_KEY=xxxx   # 선택: 뉴스 LLM 분류 (없으면 키워드 매칭)
 
 # 소스로 빌드해 실행
 docker compose up -d --build
@@ -50,6 +51,7 @@ curl http://localhost:8080/actuator/health   # {"status":"UP"}
 | `DEPLOY_PORT` | SSH 포트 (예: 22) |
 | `NAVER_CLIENT_ID` | 네이버 검색 API 클라이언트 ID |
 | `NAVER_CLIENT_SECRET` | 네이버 검색 API 시크릿 |
+| `GEMINI_API_KEY` | (선택) 뉴스 LLM 분류용 Gemini 키. 미설정 시 키워드 매칭으로 폴백 |
 | `GHCR_PULL_TOKEN` | (이미지가 private일 때만) `read:packages` 권한 PAT |
 
 > GHCR 패키지를 **public**으로 공개하면 `GHCR_PULL_TOKEN` 없이도 서버에서 pull 가능합니다.
