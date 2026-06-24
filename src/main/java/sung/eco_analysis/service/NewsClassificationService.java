@@ -7,8 +7,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 import sung.eco_analysis.config.ApiProperties;
 import sung.eco_analysis.dto.NaverNewsItem;
@@ -37,7 +39,9 @@ public class NewsClassificationService {
     private final ObjectMapper objectMapper;
 
     private static final String BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
-    private static final int BATCH_SIZE = 25;  // 1회 호출당 기사 수
+    private static final int BATCH_SIZE = 25;       // 1회 호출당 기사 수
+    private static final int MAX_RETRIES = 2;        // 5xx 시 추가 재시도 횟수 (총 3회 시도)
+    private static final long RETRY_BACKOFF_MS = 1500;
 
     private boolean enabled;
     private Set<String> validCategories;
@@ -104,15 +108,32 @@ public class NewsClassificationService {
                 )
         );
 
-        GeminiResponse resp = restTemplate.exchange(
-                url, org.springframework.http.HttpMethod.POST,
-                new HttpEntity<>(body, headers), GeminiResponse.class).getBody();
+        GeminiResponse resp = postWithRetry(url, new HttpEntity<>(body, headers));
 
         String json = extractText(resp);
         if (json == null || json.isBlank()) return List.of();
         // 구조화 출력은 최상위가 배열: [{index, categories}, ...]
         ClassifiedItem[] arr = objectMapper.readValue(json, ClassifiedItem[].class);
         return List.of(arr);
+    }
+
+    // Gemini는 부하 시 503(UNAVAILABLE)을 자주 반환한다. 일시적 5xx는 짧은 백오프로 재시도하고,
+    // 4xx(인증·할당량 초과 등)는 즉시 던져 호출 측이 키워드 매칭으로 폴백하게 한다.
+    private GeminiResponse postWithRetry(String url, HttpEntity<?> entity) {
+        for (int attempt = 0; ; attempt++) {
+            try {
+                return restTemplate.exchange(url, HttpMethod.POST, entity, GeminiResponse.class).getBody();
+            } catch (HttpServerErrorException e) {  // 5xx (503 high demand 등)
+                if (attempt >= MAX_RETRIES) throw e;
+                log.debug("Gemini {} → 재시도 {}/{}", e.getStatusCode(), attempt + 1, MAX_RETRIES);
+                try {
+                    Thread.sleep(RETRY_BACKOFF_MS * (attempt + 1));  // 선형 백오프
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw e;
+                }
+            }
+        }
     }
 
     // 응답 JSON: candidates[0].content.parts[0].text
