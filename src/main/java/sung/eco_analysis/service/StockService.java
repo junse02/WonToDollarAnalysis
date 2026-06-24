@@ -30,7 +30,8 @@ public class StockService {
     private final NaverNewsService naverNewsService;
     private final StockSentimentService stockSentimentService;
 
-    private static final String YAHOO_CHART = "https://query1.finance.yahoo.com/v8/finance/chart/%s?range=1mo&interval=1d";
+    // 3개월(약 60거래일) 일별 시세 → 차트에서 30/90일 전환 가능
+    private static final String YAHOO_CHART = "https://query1.finance.yahoo.com/v8/finance/chart/%s?range=3mo&interval=1d";
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
     private static final DateTimeFormatter LABEL_FMT = DateTimeFormatter.ofPattern("MM/dd").withZone(KST);
     private static final int NEWS_PER_STOCK = 20;

@@ -45,8 +45,16 @@
         시세를 일시적으로 불러오지 못했습니다. 잠시 후 새로고침해 주세요.
     </div>
 
+    <!-- 차트 기간 전환 -->
+    <div class="d-flex justify-content-end mb-2" th:if="${anyAvailable}">
+        <div class="btn-group btn-group-sm" role="group" aria-label="차트 기간">
+            <button type="button" class="btn btn-outline-primary period-btn" onclick="render(30, this)">최근 30일</button>
+            <button type="button" class="btn btn-outline-primary period-btn active" onclick="render(0, this)">90일</button>
+        </div>
+    </div>
+
     <div class="row g-3 mb-4">
-        <div class="col-md-6 col-lg-4" th:each="s, iter : ${stocks}">
+        <div class="col-12 col-lg-6" th:each="s, iter : ${stocks}">
             <div class="card h-100">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <span class="fw-bold"><i class="bi bi-building me-2"></i><span th:text="${s.name}">종목</span></span>
@@ -75,9 +83,9 @@
                         <span class="text-muted small ms-1" th:text="'(' + (${s.sentimentScore >= 0} ? '+' : '') + ${s.sentimentScore} + ')'">(0)</span>
                     </div>
 
-                    <!-- 미니 차트 -->
+                    <!-- 차트 -->
                     <div th:if="${s.available and !#lists.isEmpty(s.chartData)}">
-                        <canvas th:id="'stockChart' + ${iter.index}" height="90"></canvas>
+                        <canvas th:id="'stockChart' + ${iter.index}" height="170"></canvas>
                     </div>
 
                     <!-- 헤드라인 -->
@@ -113,35 +121,67 @@
 <script th:inline="javascript">
     /*<![CDATA[*/
     const STOCKS = /*[[${stocks}]]*/ [];
-    STOCKS.forEach(function (s, i) {
-        if (!s.available || !s.chartData || s.chartData.length === 0) return;
-        const el = document.getElementById('stockChart' + i);
-        if (!el) return;
-        const up = s.up;
-        const color = up ? '#dc3545' : '#0d6efd';  // 상승=빨강, 하락=파랑
-        new Chart(el, {
-            type: 'line',
-            data: {
-                labels: s.chartLabels,
-                datasets: [{
-                    data: s.chartData,
-                    borderColor: color,
-                    backgroundColor: 'transparent',
-                    borderWidth: 2,
-                    pointRadius: 0,
-                    tension: 0.25
-                }]
-            },
-            options: {
-                plugins: { legend: { display: false } },
-                scales: {
-                    x: { display: false },
-                    y: { display: true, ticks: { maxTicksLimit: 4 } }
-                },
-                maintainAspectRatio: false
+    const won = new Intl.NumberFormat('ko-KR');
+    const charts = [];
+
+    // days=0 이면 전체(90일), 양수면 최근 N거래일
+    function render(days, btn) {
+        if (btn) {
+            document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+        STOCKS.forEach(function (s, i) {
+            if (!s.available || !s.chartData || s.chartData.length === 0) return;
+            const el = document.getElementById('stockChart' + i);
+            if (!el) return;
+
+            let labels = s.chartLabels, data = s.chartData;
+            if (days > 0 && data.length > days) {
+                labels = labels.slice(-days);
+                data = data.slice(-days);
             }
+            // 표시 구간 기준 상승/하락 색상 (상승=빨강, 하락=파랑)
+            const up = data[data.length - 1] >= data[0];
+            const color = up ? '#dc3545' : '#0d6efd';
+
+            if (charts[i]) charts[i].destroy();
+            charts[i] = new Chart(el, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        borderColor: color,
+                        backgroundColor: color + '20',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        fill: true,
+                        tension: 0.25
+                    }]
+                },
+                options: {
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                title: function (items) { return items[0].label; },
+                                label: function (item) { return won.format(Math.round(item.parsed.y)) + ' ₩'; }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { display: true, ticks: { maxTicksLimit: 8, autoSkip: true, maxRotation: 0 } },
+                        y: { display: true, ticks: { maxTicksLimit: 6, callback: function (v) { return won.format(v); } } }
+                    },
+                    maintainAspectRatio: false
+                }
+            });
         });
-    });
+    }
+
+    render(0);  // 기본: 90일 전체
     /*]]>*/
 </script>
 
