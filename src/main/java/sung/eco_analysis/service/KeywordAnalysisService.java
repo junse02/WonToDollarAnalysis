@@ -85,8 +85,19 @@ public class KeywordAnalysisService {
         return sortByValueDesc(counts);
     }
 
-    // 기사 1건이 매칭되는 카테고리 집합 (카테고리당 최대 1회)
+    /** 분류 대상 카테고리 키 목록 (LLM 분류 프롬프트에서 허용 라벨로 사용). */
+    public List<String> categoryNames() {
+        return new ArrayList<>(KEYWORD_CATEGORIES.keySet());
+    }
+
+    // 기사 1건이 매칭되는 카테고리 집합 (카테고리당 최대 1회).
+    // LLM 분류 결과(item.categories)가 있으면 그것을 신뢰하고, 없으면 키워드 부분문자열 매칭으로 폴백한다.
     private Set<String> matchedCategories(NaverNewsItem item) {
+        Set<String> classified = item.getCategories();
+        if (classified != null) {
+            // 분류 완료(빈 집합 포함) → 키워드 매칭의 부정문 오탐 없이 LLM 판단 사용
+            return classified;
+        }
         String text = (item.getCleanTitle() + " " + item.getCleanDescription()).toLowerCase();
         Set<String> matched = new LinkedHashSet<>();
         for (Map.Entry<String, List<String>> entry : KEYWORD_CATEGORIES.entrySet()) {

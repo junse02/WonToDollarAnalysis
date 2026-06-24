@@ -7,6 +7,7 @@ import sung.eco_analysis.service.KeywordAnalysisService;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -77,5 +78,33 @@ class KeywordAnalysisServiceTest {
         Map<LocalDate, Integer> idx = service.computeHistoricalPressureIndex(news);
 
         assertThat(idx.get(targetDay)).isGreaterThan(0);  // 다음 날 약세 기사에 오염되지 않음
+    }
+
+    // LLM 분류 결과(categories)가 있으면 키워드 매칭을 무시하고 그 결과를 사용한다.
+    // 부정문("긴축 우려 해소")은 키워드로는 오탐되지만, 분류 결과가 빈 집합이면 0으로 집계된다.
+    @Test
+    void analyze_usesClassifiedCategories_overKeywordMatch() {
+        NaverNewsItem negated = new NaverNewsItem();
+        negated.setTitle("연준 긴축 우려 해소, 금리인상 가능성 낮다");  // 키워드론 '긴축'+'금리인상' 매칭
+        negated.setDescription("");
+        negated.setCategories(Set.of());  // LLM: 해당 원인 없음
+
+        Map<String, Integer> counts = service.analyzeKeywords(List.of(negated));
+
+        assertThat(counts.get("연준 긴축·금리 인상")).isZero();
+        assertThat(counts.get("연준 완화·금리 인하")).isZero();
+    }
+
+    // 분류 결과의 카테고리는 본문에 키워드가 없어도 집계된다(문맥 기반 분류).
+    @Test
+    void analyze_countsClassifiedCategory_withoutKeyword() {
+        NaverNewsItem item = new NaverNewsItem();
+        item.setTitle("물가 관련 직접 키워드 없는 제목");
+        item.setDescription("");
+        item.setCategories(Set.of("인플레이션·물가"));  // LLM이 문맥으로 분류
+
+        Map<String, Integer> counts = service.analyzeKeywords(List.of(item));
+
+        assertThat(counts.get("인플레이션·물가")).isEqualTo(1);
     }
 }

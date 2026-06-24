@@ -26,6 +26,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-cache'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'com.github.ben-manes.caffeine:caffeine'
+    // Anthropic 공식 Java SDK (뉴스 카테고리 LLM 분류용)
+    implementation 'com.anthropic:anthropic-java:2.34.0'
     runtimeOnly 'com.h2database:h2'
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'

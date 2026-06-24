@@ -11,6 +11,7 @@ import sung.eco_analysis.entity.NewsArticle;
 import sung.eco_analysis.repository.NewsArticleRepository;
 import sung.eco_analysis.service.NaverNewsService;
 import sung.eco_analysis.service.NewsArchiveService;
+import sung.eco_analysis.service.NewsClassificationService;
 
 import java.util.List;
 
@@ -26,6 +27,7 @@ class NewsArchiveServiceTest {
 
     @Mock NaverNewsService naverNewsService;
     @Mock NewsArticleRepository newsArticleRepository;
+    @Mock NewsClassificationService newsClassificationService;
 
     @InjectMocks NewsArchiveService newsArchiveService;
 

@@ -4,6 +4,7 @@ import lombok.Data;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
+import java.util.Set;
 
 @Data
 public class NaverNewsItem {
@@ -13,6 +14,10 @@ public class NaverNewsItem {
     private String link;
     private String pubDate;
     private String originallink;
+
+    // LLM 분류 결과(카테고리 집합). null=미분류(키워드 매칭으로 폴백), 비어 있음=분류했으나 해당 없음.
+    // 네이버 API 응답에는 없고, DB 아카이브에서 복원할 때 채워진다.
+    private Set<String> categories;
 
     public String getCleanTitle() {
         if (title == null) return "";

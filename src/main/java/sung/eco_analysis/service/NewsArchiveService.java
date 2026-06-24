@@ -10,6 +10,7 @@ import sung.eco_analysis.entity.NewsArticle;
 import sung.eco_analysis.repository.NewsArticleRepository;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -30,6 +31,7 @@ public class NewsArchiveService {
 
     private final NaverNewsService naverNewsService;
     private final NewsArticleRepository newsArticleRepository;
+    private final NewsClassificationService newsClassificationService;
 
     private static final int FETCH_SIZE = 100;  // 네이버 API 1회 최대 조회 건수
 
@@ -51,17 +53,28 @@ public class NewsArchiveService {
         }
         if (byLink.isEmpty()) return 0;
 
-        // 이미 저장된 link 한 번에 조회 후 신규만 적재
+        // 이미 저장된 link 한 번에 조회 후 신규만 추림
         Set<String> existing = new HashSet<>(newsArticleRepository.findExistingLinks(byLink.keySet()));
-        List<NewsArticle> toSave = byLink.entrySet().stream()
+        List<NaverNewsItem> newItems = byLink.entrySet().stream()
                 .filter(e -> !existing.contains(e.getKey()))
-                .map(e -> NewsArticle.from(e.getValue()))
+                .map(Map.Entry::getValue)
                 .collect(Collectors.toList());
+        if (newItems.isEmpty()) return 0;
 
-        if (!toSave.isEmpty()) {
-            newsArticleRepository.saveAll(toSave);
-            log.info("뉴스 아카이브: 신규 {}건 저장 (조회 {}건)", toSave.size(), byLink.size());
+        // 신규 기사만 LLM 분류 (비활성/실패 시 빈 맵 → classified=false로 키워드 폴백)
+        Map<Integer, List<String>> labels = newsClassificationService.classify(newItems);
+
+        List<NewsArticle> toSave = new ArrayList<>(newItems.size());
+        for (int i = 0; i < newItems.size(); i++) {
+            NewsArticle article = NewsArticle.from(newItems.get(i));
+            List<String> cats = labels.get(i);
+            if (cats != null) article.applyCategories(cats);
+            toSave.add(article);
         }
+
+        newsArticleRepository.saveAll(toSave);
+        log.info("뉴스 아카이브: 신규 {}건 저장 (조회 {}건, 분류 {}건)",
+                toSave.size(), byLink.size(), labels.size());
         return toSave.size();
     }
 
