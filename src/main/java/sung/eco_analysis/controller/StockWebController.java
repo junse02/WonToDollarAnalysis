@@ -33,6 +33,9 @@ public class StockWebController {
         model.addAttribute("correlations", correlations);
         model.addAttribute("anyCorrelation", anyCorrelation);
 
+        // 종목별 감성 점수 추이 (최근 30일 스냅샷). 카드별 미니 차트로 표시.
+        model.addAttribute("sentimentTrends", stockSnapshotService.recentSentimentTrends(30));
+
         // 감성 예측 적중률 (누적 스냅샷 기반). 평가된 건이 없으면 "산출 중"으로 표시.
         int[] acc = stockSnapshotService.getAccuracyStats();  // [matched, evaluated]
         boolean accuracyAvailable = acc[1] > 0;

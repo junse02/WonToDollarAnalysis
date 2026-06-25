@@ -8,7 +8,10 @@ import sung.eco_analysis.entity.StockSnapshot;
 import sung.eco_analysis.repository.StockSnapshotRepository;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -108,4 +111,23 @@ public class StockSnapshotService {
         int matched = (int) evaluated.stream().filter(StockSnapshot::getMatched).count();
         return new int[]{matched, total};
     }
+
+    private static final DateTimeFormatter TREND_LABEL_FMT = DateTimeFormatter.ofPattern("MM/dd");
+
+    /**
+     * 최근 {@code days}일간 종목별 감성 점수 추이를 심볼 -> 시계열로 반환한다.
+     * 캡처가 누적될수록 길어진다(콜드 스타트: 가동 초기에는 점이 적음).
+     */
+    public Map<String, List<SentimentPoint>> recentSentimentTrends(int days) {
+        LocalDate from = LocalDate.now().minusDays(days);
+        Map<String, List<SentimentPoint>> bySymbol = new LinkedHashMap<>();
+        for (StockSnapshot s : snapshotRepository.findBySnapshotDateGreaterThanEqualOrderBySnapshotDateAsc(from)) {
+            bySymbol.computeIfAbsent(s.getSymbol(), k -> new ArrayList<>())
+                    .add(new SentimentPoint(s.getSnapshotDate().format(TREND_LABEL_FMT), s.getSentimentScore()));
+        }
+        return bySymbol;
+    }
+
+    /** 감성 추이 차트의 한 점 (MM/dd 라벨 + 점수). */
+    public record SentimentPoint(String label, int score) {}
 }

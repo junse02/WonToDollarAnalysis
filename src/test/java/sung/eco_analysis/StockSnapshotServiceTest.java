@@ -119,4 +119,22 @@ class StockSnapshotServiceTest {
         assertThat(StockSnapshotService.predictedDirection(1)).isNull();
         assertThat(StockSnapshotService.predictedDirection(-1)).isNull();
     }
+
+    // 감성 추이: 심볼별로 날짜순 점수 시계열을 만든다
+    @Test
+    void recentSentimentTrends_groupsBySymbolInDateOrder() {
+        StockSnapshot a1 = new StockSnapshot("005930.KS", "삼성전자", LocalDate.of(2026, 6, 10), 1, null, 70000);
+        StockSnapshot a2 = new StockSnapshot("005930.KS", "삼성전자", LocalDate.of(2026, 6, 11), 3, true, 71000);
+        StockSnapshot b1 = new StockSnapshot("000660.KS", "SK하이닉스", LocalDate.of(2026, 6, 10), -2, false, 200000);
+        when(snapshotRepository.findBySnapshotDateGreaterThanEqualOrderBySnapshotDateAsc(any()))
+                .thenReturn(List.of(a1, b1, a2));
+
+        var trends = service.recentSentimentTrends(30);
+
+        assertThat(trends).containsOnlyKeys("005930.KS", "000660.KS");
+        assertThat(trends.get("005930.KS")).hasSize(2);
+        assertThat(trends.get("005930.KS").get(0).score()).isEqualTo(1);
+        assertThat(trends.get("005930.KS").get(1).score()).isEqualTo(3);
+        assertThat(trends.get("000660.KS").get(0).label()).isEqualTo("06/10");
+    }
 }

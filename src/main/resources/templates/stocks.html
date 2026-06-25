@@ -136,6 +136,17 @@
                         <canvas th:id="'stockChart' + ${iter.index}" height="170"></canvas>
                     </div>
 
+                    <!-- 감성 추이 -->
+                    <div class="mt-3" th:with="trend=${sentimentTrends.get(s.symbol)}">
+                        <small class="text-muted d-block mb-1">감성 점수 추이 (최근 30일)</small>
+                        <canvas th:if="${trend != null and #lists.size(trend) >= 2}"
+                                th:id="'sentChart' + ${iter.index}" height="90"></canvas>
+                        <div th:unless="${trend != null and #lists.size(trend) >= 2}"
+                             class="text-muted small fst-italic">
+                            일일 스냅샷이 쌓이면 호재(+)/악재(−) 점수 변화를 그래프로 보여줍니다.
+                        </div>
+                    </div>
+
                     <!-- 헤드라인 -->
                     <div class="mt-3" th:if="${!#lists.isEmpty(s.headlines)}">
                         <small class="text-muted d-block mb-1">관련 뉴스</small>
@@ -171,6 +182,7 @@
 <script th:inline="javascript">
     /*<![CDATA[*/
     const STOCKS = /*[[${stocks}]]*/ [];
+    const SENT = /*[[${sentimentTrends}]]*/ {};  // 심볼 -> [{label, score}, ...]
     const won = new Intl.NumberFormat('ko-KR');
     const charts = [];
 
@@ -232,6 +244,41 @@
     }
 
     render(0);  // 기본: 90일 전체
+
+    // 종목별 감성 점수 추이 (호재 +, 악재 −). 점이 2개 이상인 종목만 그린다.
+    function renderSentiment() {
+        STOCKS.forEach(function (s, i) {
+            const pts = SENT[s.symbol];
+            if (!pts || pts.length < 2) return;
+            const el = document.getElementById('sentChart' + i);
+            if (!el) return;
+            const labels = pts.map(p => p.label);
+            const scores = pts.map(p => p.score);
+            const colors = scores.map(v => v > 0 ? '#dc3545' : (v < 0 ? '#0d6efd' : '#adb5bd'));
+            new Chart(el, {
+                type: 'bar',
+                data: { labels: labels, datasets: [{ data: scores, backgroundColor: colors }] },
+                options: {
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                title: items => items[0].label,
+                                label: item => '감성 ' + (item.parsed.y >= 0 ? '+' : '') + item.parsed.y
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { ticks: { maxTicksLimit: 6, maxRotation: 0 } },
+                        y: { ticks: { stepSize: 1 }, suggestedMin: -3, suggestedMax: 3 }
+                    },
+                    maintainAspectRatio: false
+                }
+            });
+        });
+    }
+
+    renderSentiment();
     /*]]>*/
 </script>
 
