@@ -59,6 +59,32 @@
         </div>
     </div>
 
+    <!-- 원/달러 환율 상관 분석 -->
+    <div class="card mb-4" th:if="${anyCorrelation}">
+        <div class="card-header d-flex align-items-center">
+            <i class="bi bi-currency-exchange me-2"></i>
+            <span class="fw-bold">원/달러 환율 상관관계</span>
+            <span class="text-muted small ms-2">최근 종가와 환율의 동행/역행 (수출주는 환율 상승 시 동행 경향)</span>
+        </div>
+        <div class="card-body">
+            <div class="row g-2">
+                <div class="col-6 col-md-4 col-lg-3" th:each="c : ${correlations}" th:if="${c.available}">
+                    <div class="d-flex justify-content-between align-items-center border rounded px-2 py-1">
+                        <span class="text-truncate me-2" th:text="${c.name}">종목</span>
+                        <span class="badge flex-shrink-0"
+                              th:classappend="${c.positive} ? 'bg-danger' : 'bg-primary'"
+                              th:text="(${c.coefficient >= 0} ? '+' : '') + ${#numbers.formatDecimal(c.coefficient, 1, 2)}">0.00</span>
+                    </div>
+                    <div class="text-muted small text-end" th:text="${c.label}">동행</div>
+                </div>
+            </div>
+            <p class="text-muted small mb-0 mt-2">
+                <i class="bi bi-info-circle me-1"></i>
+                +1에 가까울수록 환율과 같은 방향, −1에 가까울수록 반대 방향으로 움직였습니다. (상관계수, 인과 아님)
+            </p>
+        </div>
+    </div>
+
     <!-- 차트 기간 전환 -->
     <div class="d-flex justify-content-end mb-2" th:if="${anyAvailable}">
         <div class="btn-group btn-group-sm" role="group" aria-label="차트 기간">
