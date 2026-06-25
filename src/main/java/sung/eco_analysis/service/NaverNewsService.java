@@ -33,18 +33,25 @@ public class NaverNewsService {
 
     @Cacheable(value = "news", key = "'fx|' + #display", unless = "#result == null || #result.isEmpty()")
     public List<NaverNewsItem> fetchExchangeRateNews(int display) {
-        return doFetch("달러 환율", display);
+        return doFetch("달러 환율", display, "date");
     }
 
-    // 임의 검색어로 뉴스 조회 (종목명 등). 외부 호출이라 캐시 프록시가 적용된다.
+    // 임의 검색어로 뉴스 조회 (종목명 등). 최신순(sort=date). 외부 호출이라 캐시 프록시가 적용된다.
     @Cacheable(value = "news", key = "#query + '|' + #display", unless = "#result == null || #result.isEmpty()")
     public List<NaverNewsItem> fetchNews(String query, int display) {
-        return doFetch(query, display);
+        return doFetch(query, display, "date");
     }
 
-    private List<NaverNewsItem> doFetch(String query, int display) {
+    // 관련도순(sort=sim) 조회. 검색어가 일반적(예: 미국 종목명)이라 최신 시황 묶음 기사에 묻히기 쉬운 경우,
+    // 종목 자체에 집중한 기사를 상위로 올린다. 관련도 순서를 보존하기 위해 날짜 재정렬은 하지 않는다.
+    @Cacheable(value = "news", key = "'sim|' + #query + '|' + #display", unless = "#result == null || #result.isEmpty()")
+    public List<NaverNewsItem> fetchNewsByRelevance(String query, int display) {
+        return doFetch(query, display, "sim");
+    }
+
+    private List<NaverNewsItem> doFetch(String query, int display, String sort) {
         String encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8);
-        String url = String.format("%s?query=%s&display=%d&sort=date", NAVER_NEWS_URL, encodedQuery, display);
+        String url = String.format("%s?query=%s&display=%d&sort=%s", NAVER_NEWS_URL, encodedQuery, display, sort);
         // 이미 인코딩된 문자열을 URI 객체로 넘겨 RestTemplate의 이중 인코딩 방지
         URI uri = URI.create(url);
 
@@ -64,8 +71,8 @@ public class NaverNewsService {
                 if (!items.isEmpty()) {
                     log.info("최신 기사 pubDate: {}", items.get(0).getPubDate());
                 }
-                // 시스템 시계에 의존하지 않고, pubDate 최신순으로 정렬해 반환
-                return sortByDateDesc(items);
+                // 최신순(date)은 pubDate로 재정렬, 관련도순(sim)은 네이버가 준 순서를 보존
+                return "date".equals(sort) ? sortByDateDesc(items) : items;
             }
         } catch (Exception e) {
             log.error("네이버 뉴스 조회 실패 (HTTP {}): {}", e.getClass().getSimpleName(), e.getMessage());

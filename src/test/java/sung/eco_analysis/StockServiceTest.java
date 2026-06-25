@@ -90,7 +90,8 @@ class StockServiceTest {
         when(restTemplate.exchange(anyString(), eq(HttpMethod.GET), any(HttpEntity.class),
                 eq(YahooChartResponse.class)))
                 .thenReturn(ResponseEntity.ok(chartResponse(200.0, 195.0)));
-        when(naverNewsService.fetchNews(anyString(), anyInt()))
+        // 미국 종목은 관련도순(sim) 경로를 사용
+        when(naverNewsService.fetchNewsByRelevance(anyString(), anyInt()))
                 .thenReturn(List.of(news("신고가 경신")));
 
         List<StockQuote> stocks = stockService.getTopUsStocks();
