@@ -45,6 +45,20 @@
         시세를 일시적으로 불러오지 못했습니다. 잠시 후 새로고침해 주세요.
     </div>
 
+    <!-- 감성 예측 적중률 -->
+    <div class="alert d-flex align-items-center mb-3"
+         th:classappend="${accuracyAvailable} ? 'alert-info' : 'alert-secondary'" role="alert">
+        <i class="bi bi-bullseye me-2 fs-5"></i>
+        <div th:if="${accuracyAvailable}">
+            <span class="fw-bold">뉴스 감성 예측 적중률 <span th:text="${accuracyPercent} + '%'">0%</span></span>
+            <span class="ms-1" th:text="'(' + ${accuracyMatched} + '/' + ${accuracyEvaluated} + '건 적중)'">(0/0)</span>
+            <span class="text-muted small ms-1">· 호재/악재 우세 예측이 다음 거래일 종가 방향과 일치한 비율</span>
+        </div>
+        <div th:unless="${accuracyAvailable}" class="text-muted">
+            뉴스 감성 예측 적중률 <span class="fw-bold">산출 중</span> · 일일 스냅샷이 쌓이면 호재/악재 예측의 실제 적중률을 표시합니다.
+        </div>
+    </div>
+
     <!-- 차트 기간 전환 -->
     <div class="d-flex justify-content-end mb-2" th:if="${anyAvailable}">
         <div class="btn-group btn-group-sm" role="group" aria-label="차트 기간">

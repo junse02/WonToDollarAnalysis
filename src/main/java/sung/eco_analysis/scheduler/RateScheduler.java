@@ -8,6 +8,8 @@ import org.springframework.stereotype.Component;
 import sung.eco_analysis.service.ExchangeRateService;
 import sung.eco_analysis.service.NewsArchiveService;
 import sung.eco_analysis.service.SnapshotService;
+import sung.eco_analysis.service.StockService;
+import sung.eco_analysis.service.StockSnapshotService;
 
 @Component
 @RequiredArgsConstructor
@@ -17,6 +19,8 @@ public class RateScheduler {
     private final ExchangeRateService exchangeRateService;
     private final NewsArchiveService newsArchiveService;
     private final SnapshotService snapshotService;
+    private final StockService stockService;
+    private final StockSnapshotService stockSnapshotService;
 
     // 앱 시작 시 누락된 과거 데이터 백필 + 오늘 스냅샷 캡처/평가
     @PostConstruct
@@ -36,6 +40,9 @@ public class RateScheduler {
         snapshotService.bootstrapFromHistory();
         snapshotService.evaluatePending();
         snapshotService.captureToday();
+
+        // 종목 감성 스냅샷: 미평가 건 평가 → 오늘 캡처 (콜드 스타트, 부트스트랩 없음)
+        captureStockSentiment();
     }
 
     // 매 1시간마다 환율 갱신 + 스냅샷 갱신/평가
@@ -47,5 +54,17 @@ public class RateScheduler {
         newsArchiveService.reclassifyPending();  // 미분류 기사 소급 분류 (503 등 실패분 재시도 포함)
         snapshotService.evaluatePending();
         snapshotService.captureToday();
+        captureStockSentiment();
+    }
+
+    // 종목 시세+감성을 스냅샷으로 남기고, 이후 거래일 종가가 확보된 미평가 건을 채점한다.
+    // 외부 API(Yahoo·네이버) 실패가 환율 갱신까지 막지 않도록 예외를 흡수한다.
+    private void captureStockSentiment() {
+        try {
+            stockSnapshotService.evaluatePending();
+            stockSnapshotService.captureToday(stockService.getTopStocks());
+        } catch (Exception e) {
+            log.warn("종목 감성 스냅샷 처리 실패: {}", e.getMessage());
+        }
     }
 }
