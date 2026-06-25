@@ -38,8 +38,26 @@ public class StockQuote {
         this.headlines = headlines;
     }
 
+    // 급변으로 강조할 일중 변동률(±%) 임계치
+    private static final double ABRUPT_MOVE_PERCENT = 3.0;
+
     public boolean isAvailable() {
         return price != null;
+    }
+
+    /** 전일 대비 ±3% 이상 급변 여부 (주의 강조용). */
+    public boolean isAbruptMove() {
+        return changePercent != null && Math.abs(changePercent) >= ABRUPT_MOVE_PERCENT;
+    }
+
+    /** 뉴스 감성이 '악재 우세'인지 (점수 -2 이하). */
+    public boolean isBadNews() {
+        return sentimentScore <= -2;
+    }
+
+    /** 급변 또는 악재 우세 → 카드 강조 대상. */
+    public boolean isAlert() {
+        return isAbruptMove() || isBadNews();
     }
 
     /** 뉴스 헤드라인 (제목 + 링크 + 호재/악재 감성). */
