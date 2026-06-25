@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>국내 상위 종목 분석</title>
+    <title th:text="${pageTitle}">상위 종목 분석</title>
     <script>
         (function () {
             var t = localStorage.getItem('theme') || 'light';
@@ -19,9 +19,12 @@
 <nav class="navbar navbar-dark px-4">
     <div class="d-flex align-items-center gap-2">
         <i class="bi bi-bar-chart-line fs-5"></i>
-        <span class="navbar-brand mb-0 fw-bold">국내 상위 종목 분석</span>
+        <span class="navbar-brand mb-0 fw-bold" th:text="${pageTitle}">상위 종목 분석</span>
     </div>
     <div class="d-flex align-items-center gap-3">
+        <a th:href="${otherMarketUrl}" class="btn btn-sm btn-outline-light">
+            <i class="bi bi-globe me-1"></i><span th:text="${otherMarketLabel}">다른 시장</span>
+        </a>
         <a href="/" class="btn btn-sm btn-outline-light">
             <i class="bi bi-currency-exchange me-1"></i>환율 분석
         </a>
@@ -109,13 +112,15 @@
                     <span class="text-muted small" th:text="${s.symbol}">000000.KS</span>
                 </div>
                 <div class="card-body">
-                    <!-- 시세 -->
+                    <!-- 시세 (통화: 원화=정수+₩, 달러=$+소수2자리) -->
                     <div th:if="${s.available}" class="d-flex align-items-baseline justify-content-between mb-2">
-                        <span class="rate-display"
+                        <span class="rate-display" th:if="${currency == 'USD'}"
+                              th:text="'$' + ${#numbers.formatDecimal(s.price, 1, 'COMMA', 2, 'POINT')}">0</span>
+                        <span class="rate-display" th:unless="${currency == 'USD'}"
                               th:text="${#numbers.formatInteger(s.price, 0, 'COMMA')} + ' ₩'">0</span>
                         <span class="fw-bold"
                               th:classappend="${s.up} ? 'text-danger' : 'text-primary'"
-                              th:text="(${s.up} ? '▲ ' : '▼ ') + (${s.changeAmount != null} ? ${#numbers.formatDecimal(s.changeAmount, 1, 'COMMA', 0, 'POINT')} : '-') + ' (' + (${s.changePercent != null} ? ${#numbers.formatDecimal(s.changePercent, 1, 2)} : '-') + '%)'">
+                              th:text="(${s.up} ? '▲ ' : '▼ ') + (${s.changeAmount != null} ? ${#numbers.formatDecimal(s.changeAmount, 1, 'COMMA', currency == 'USD' ? 2 : 0, 'POINT')} : '-') + ' (' + (${s.changePercent != null} ? ${#numbers.formatDecimal(s.changePercent, 1, 2)} : '-') + '%)'">
                             변동
                         </span>
                     </div>
@@ -165,6 +170,7 @@
     <p class="text-muted small">
         시세: Yahoo Finance (일별, 지연 가능) · 감성: 종목 뉴스 호재/악재 키워드 기반 ·
         종목은 시가총액 상위권 기준(변동 가능)
+        <span th:if="${currency == 'USD'}">· 미국 종목 뉴스는 네이버 한국어 뉴스 검색 결과 기준</span>
     </p>
 
 </div>
@@ -183,7 +189,13 @@
     /*<![CDATA[*/
     const STOCKS = /*[[${stocks}]]*/ [];
     const SENT = /*[[${sentimentTrends}]]*/ {};  // 심볼 -> [{label, score}, ...]
+    const CURRENCY = /*[[${currency}]]*/ 'KRW';
+    const isUsd = CURRENCY === 'USD';
     const won = new Intl.NumberFormat('ko-KR');
+    const usd = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    // 통화별 금액 표기: 원화=정수+₩, 달러=$+소수2자리
+    function money(v) { return isUsd ? ('$' + usd.format(v)) : (won.format(Math.round(v)) + ' ₩'); }
+    function axisMoney(v) { return isUsd ? ('$' + usd.format(v)) : won.format(v); }
     const charts = [];
 
     // days=0 이면 전체(90일), 양수면 최근 N거래일
@@ -229,13 +241,13 @@
                         tooltip: {
                             callbacks: {
                                 title: function (items) { return items[0].label; },
-                                label: function (item) { return won.format(Math.round(item.parsed.y)) + ' ₩'; }
+                                label: function (item) { return money(item.parsed.y); }
                             }
                         }
                     },
                     scales: {
                         x: { display: true, ticks: { maxTicksLimit: 8, autoSkip: true, maxRotation: 0 } },
-                        y: { display: true, ticks: { maxTicksLimit: 6, callback: function (v) { return won.format(v); } } }
+                        y: { display: true, ticks: { maxTicksLimit: 6, callback: function (v) { return axisMoney(v); } } }
                     },
                     maintainAspectRatio: false
                 }

@@ -63,6 +63,7 @@ public class RateScheduler {
         try {
             stockSnapshotService.evaluatePending();
             stockSnapshotService.captureToday(stockService.getTopStocks());
+            stockSnapshotService.captureToday(stockService.getTopUsStocks());
         } catch (Exception e) {
             log.warn("종목 감성 스냅샷 처리 실패: {}", e.getMessage());
         }

@@ -84,6 +84,26 @@ class StockServiceTest {
     }
 
     @Test
+    void getTopUsStocks_buildsTenUsdQuotes() {
+        StockService stockService = new StockService(restTemplate, naverNewsService, sentimentService);
+
+        when(restTemplate.exchange(anyString(), eq(HttpMethod.GET), any(HttpEntity.class),
+                eq(YahooChartResponse.class)))
+                .thenReturn(ResponseEntity.ok(chartResponse(200.0, 195.0)));
+        when(naverNewsService.fetchNews(anyString(), anyInt()))
+                .thenReturn(List.of(news("신고가 경신")));
+
+        List<StockQuote> stocks = stockService.getTopUsStocks();
+
+        assertThat(stocks).hasSize(10);
+        StockQuote first = stocks.get(0);
+        assertThat(first.getSymbol()).isEqualTo("AAPL");   // 접미사 없는 미국 티커
+        assertThat(first.getPrice()).isEqualTo(200.0);
+        assertThat(first.getChangeAmount()).isEqualTo(5.0);
+        assertThat(first.getHeadlines()).isNotEmpty();
+    }
+
+    @Test
     void getTopStocks_yahooFailure_marksUnavailable_butKeepsNews() {
         StockService stockService = new StockService(restTemplate, naverNewsService, sentimentService);
 

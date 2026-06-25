@@ -51,9 +51,31 @@ public class StockService {
             new StockRef("신한지주", "055550.KS")
     );
 
+    // 미국 시가총액 상위권 (Yahoo는 미국 티커를 접미사 없이 사용). 종목명은 네이버 한국어 뉴스 검색어로도 쓰인다.
+    private static final List<StockRef> TOP_US_STOCKS = List.of(
+            new StockRef("애플", "AAPL"),
+            new StockRef("엔비디아", "NVDA"),
+            new StockRef("마이크로소프트", "MSFT"),
+            new StockRef("아마존", "AMZN"),
+            new StockRef("구글", "GOOGL"),
+            new StockRef("메타", "META"),
+            new StockRef("테슬라", "TSLA"),
+            new StockRef("브로드컴", "AVGO"),
+            new StockRef("일라이릴리", "LLY"),
+            new StockRef("JP모건", "JPM")
+    );
+
     public List<StockQuote> getTopStocks() {
+        return buildQuotes(TOP_STOCKS);
+    }
+
+    public List<StockQuote> getTopUsStocks() {
+        return buildQuotes(TOP_US_STOCKS);
+    }
+
+    private List<StockQuote> buildQuotes(List<StockRef> refs) {
         List<StockQuote> result = new ArrayList<>();
-        for (StockRef ref : TOP_STOCKS) {
+        for (StockRef ref : refs) {
             result.add(buildQuote(ref));
         }
         return result;

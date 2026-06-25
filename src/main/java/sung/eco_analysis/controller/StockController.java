@@ -21,4 +21,9 @@ public class StockController {
     public ResponseEntity<List<StockQuote>> getTopStocks() {
         return ResponseEntity.ok(stockService.getTopStocks());
     }
+
+    @GetMapping("/stocks/us")
+    public ResponseEntity<List<StockQuote>> getTopUsStocks() {
+        return ResponseEntity.ok(stockService.getTopUsStocks());
+    }
 }

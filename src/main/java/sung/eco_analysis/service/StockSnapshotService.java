@@ -10,6 +10,7 @@ import sung.eco_analysis.repository.StockSnapshotRepository;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -106,9 +107,21 @@ public class StockSnapshotService {
 
     /** [matched, evaluated] 반환 (중립 제외, 방향 예측이 있었던 건만). */
     public int[] getAccuracyStats() {
+        return getAccuracyStats(null);
+    }
+
+    /**
+     * 특정 심볼 집합에 한정한 [matched, evaluated]. {@code symbols}가 null이면 전체.
+     * 국내/미국 페이지가 각자 시장의 적중률만 보도록 분리하는 데 쓴다.
+     */
+    public int[] getAccuracyStats(Collection<String> symbols) {
         List<StockSnapshot> evaluated = snapshotRepository.findByEvaluatedTrueAndMatchedIsNotNull();
-        int total = evaluated.size();
-        int matched = (int) evaluated.stream().filter(StockSnapshot::getMatched).count();
+        int total = 0, matched = 0;
+        for (StockSnapshot s : evaluated) {
+            if (symbols != null && !symbols.contains(s.getSymbol())) continue;
+            total++;
+            if (Boolean.TRUE.equals(s.getMatched())) matched++;
+        }
         return new int[]{matched, total};
     }
 
