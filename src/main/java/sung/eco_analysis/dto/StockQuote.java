@@ -42,14 +42,16 @@ public class StockQuote {
         return price != null;
     }
 
-    /** 뉴스 헤드라인 (제목 + 링크). */
+    /** 뉴스 헤드라인 (제목 + 링크 + 호재/악재 감성). */
     @Getter
     public static class NewsHeadline {
         private final String title;
         private final String link;
-        public NewsHeadline(String title, String link) {
+        private final String sentiment;   // 호재 / 악재 / 중립
+        public NewsHeadline(String title, String link, String sentiment) {
             this.title = title;
             this.link = link;
+            this.sentiment = sentiment;
         }
     }
 }

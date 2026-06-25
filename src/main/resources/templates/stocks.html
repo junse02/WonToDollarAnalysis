@@ -91,8 +91,10 @@
                     <!-- 헤드라인 -->
                     <div class="mt-3" th:if="${!#lists.isEmpty(s.headlines)}">
                         <small class="text-muted d-block mb-1">관련 뉴스</small>
-                        <div th:each="h : ${s.headlines}" class="event-news-item">
-                            <i class="bi bi-dot"></i>
+                        <div th:each="h : ${s.headlines}" class="event-news-item d-flex align-items-start gap-2">
+                            <span class="badge flex-shrink-0"
+                                  th:classappend="${h.sentiment == '호재'} ? 'bg-danger' : (${h.sentiment == '악재'} ? 'bg-primary' : 'bg-secondary')"
+                                  th:text="${h.sentiment}">중립</span>
                             <a th:href="${h.link}" th:text="${h.title}" target="_blank" class="news-title">제목</a>
                         </div>
                     </div>

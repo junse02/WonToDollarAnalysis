@@ -67,7 +67,9 @@ public class StockService {
         StockSentimentService.Result sentiment = stockSentimentService.analyze(news);
         List<StockQuote.NewsHeadline> headlines = news.stream()
                 .limit(HEADLINES_SHOWN)
-                .map(n -> new StockQuote.NewsHeadline(n.getCleanTitle(), n.getLink()))
+                .map(n -> new StockQuote.NewsHeadline(
+                        n.getCleanTitle(), n.getLink(),
+                        stockSentimentService.classifyItem(n).getLabel()))
                 .toList();
 
         if (chart == null || chart.getMeta() == null || chart.getMeta().getRegularMarketPrice() == null) {

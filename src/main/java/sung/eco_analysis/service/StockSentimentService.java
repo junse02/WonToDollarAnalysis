@@ -41,5 +41,29 @@ public class StockSentimentService {
         return new Result(label, score);
     }
 
+    /**
+     * 뉴스 1건이 해당 종목에 호재/악재 중 무엇인지 분류한다.
+     * 호재·악재 단어가 함께 나오거나 둘 다 없으면 중립으로 본다.
+     */
+    public ItemSentiment classifyItem(NaverNewsItem item) {
+        String text = item.getCleanTitle() + " " + item.getCleanDescription();
+        boolean hasPos = POSITIVE.stream().anyMatch(text::contains);
+        boolean hasNeg = NEGATIVE.stream().anyMatch(text::contains);
+        if (hasPos && !hasNeg) return ItemSentiment.POSITIVE;
+        if (hasNeg && !hasPos) return ItemSentiment.NEGATIVE;
+        return ItemSentiment.NEUTRAL;
+    }
+
+    /** 뉴스 1건 단위 호재/악재 분류. */
+    public enum ItemSentiment {
+        POSITIVE("호재"),
+        NEGATIVE("악재"),
+        NEUTRAL("중립");
+
+        private final String label;
+        ItemSentiment(String label) { this.label = label; }
+        public String getLabel() { return label; }
+    }
+
     public record Result(String label, int score) {}
 }
