@@ -137,15 +137,18 @@
                     </div>
 
                     <!-- 차트 -->
-                    <div th:if="${s.available and !#lists.isEmpty(s.chartData)}">
-                        <canvas th:id="'stockChart' + ${iter.index}" height="170"></canvas>
+                    <div th:if="${s.available and !#lists.isEmpty(s.chartData)}"
+                         style="position: relative; height: 200px;">
+                        <canvas th:id="'stockChart' + ${iter.index}"></canvas>
                     </div>
 
                     <!-- 감성 추이 -->
                     <div class="mt-3" th:with="trend=${sentimentTrends.get(s.symbol)}">
                         <small class="text-muted d-block mb-1">감성 점수 추이 (최근 30일)</small>
-                        <canvas th:if="${trend != null and #lists.size(trend) >= 2}"
-                                th:id="'sentChart' + ${iter.index}" height="90"></canvas>
+                        <div th:if="${trend != null and #lists.size(trend) >= 2}"
+                             style="position: relative; height: 110px;">
+                            <canvas th:id="'sentChart' + ${iter.index}"></canvas>
+                        </div>
                         <div th:unless="${trend != null and #lists.size(trend) >= 2}"
                              class="text-muted small fst-italic">
                             일일 스냅샷이 쌓이면 호재(+)/악재(−) 점수 변화를 그래프로 보여줍니다.
