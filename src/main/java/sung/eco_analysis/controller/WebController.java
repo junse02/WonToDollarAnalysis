@@ -69,8 +69,8 @@ public class WebController {
         // 환율 히스토리 (최근 30일) - 변동 원인 분석용 원본
         List<RateHistory> history = exchangeRateService.getRecentHistory(30);
 
-        // 차트 데이터: 일자별 1개로 집계해 최근일 쏠림 방지
-        List<RateHistory> dailyHistory = exchangeRateService.getDailyRecentHistory(30);
+        // 차트 데이터: 일자별 1개로 집계 + 주말(ECB 미발표로 값 반복) 제외해 영업일만 표시
+        List<RateHistory> dailyHistory = exchangeRateService.getWeekdayDailyHistory(30);
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("MM/dd");
         List<String> chartLabels = dailyHistory.stream()
                 .map(h -> h.getRecordedAt().format(fmt))

@@ -10,6 +10,7 @@ import sung.eco_analysis.dto.FrankfurterTimeSeriesResponse;
 import sung.eco_analysis.entity.RateHistory;
 import sung.eco_analysis.repository.RateHistoryRepository;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -17,6 +18,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -113,6 +115,18 @@ public class ExchangeRateService {
             byDay.put(h.getRecordedAt().toLocalDate(), h);  // 오름차순이므로 마지막 기록이 남음
         }
         return new ArrayList<>(byDay.values());
+    }
+
+    // 차트 표시용: 주말(토·일)은 ECB(Frankfurter)가 환율을 발표하지 않아 금요일 값이
+    // 그대로 반복된다. 그래프가 며칠째 평평해 보이는 걸 막기 위해 영업일만 남긴다.
+    // (상관분석·변동원인 분석은 원본 getDailyRecentHistory/getRecentHistory를 그대로 사용)
+    public List<RateHistory> getWeekdayDailyHistory(int days) {
+        return getDailyRecentHistory(days).stream()
+                .filter(h -> {
+                    DayOfWeek dow = h.getRecordedAt().getDayOfWeek();
+                    return dow != DayOfWeek.SATURDAY && dow != DayOfWeek.SUNDAY;
+                })
+                .collect(Collectors.toList());
     }
 
     public long getStoredCount() {
