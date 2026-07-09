@@ -52,8 +52,8 @@
     <div class="card mb-4" th:if="${sectorSummaryAvailable}">
         <div class="card-header d-flex align-items-center">
             <i class="bi bi-grid-1x2 me-2"></i>
-            <span class="fw-bold">섹터별 강세 · 관심도</span>
-            <span class="text-muted small ms-2">업종별 평균 등락률(강세)과 뉴스 언급량(관심도)</span>
+            <span class="fw-bold">테마·섹터별 강세 · 관심도</span>
+            <span class="text-muted small ms-2">테마별 평균 등락률(강세)과 뉴스 언급량(관심도)</span>
         </div>
         <div class="card-body">
             <!-- 한 줄 요약: 가장 강한 섹터 / 가장 주목받는 섹터 -->
@@ -234,8 +234,8 @@
 
     <p class="text-muted small">
         시세: Yahoo Finance (일별, 지연 가능) · 감성: 종목 뉴스 호재/악재 키워드 기반 ·
-        종목은 시가총액 상위권 기준(변동 가능)
-        <span th:if="${currency == 'USD'}">· 미국 종목 뉴스는 네이버 한국어 뉴스 검색 결과 기준</span>
+        <span th:unless="${currency == 'USD'}">종목은 시가총액 상위권 기준(변동 가능)</span>
+        <span th:if="${currency == 'USD'}">종목은 대형주 + AI반도체·양자컴퓨팅 등 주요 테마 대표주 기준(변동 가능) · 미국 종목 뉴스는 네이버 한국어 뉴스 검색 결과 기준</span>
     </p>
 
 </div>

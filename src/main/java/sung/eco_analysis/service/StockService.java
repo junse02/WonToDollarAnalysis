@@ -52,18 +52,29 @@ public class StockService {
             new StockRef("신한지주", "055550.KS", "금융")
     );
 
-    // 미국 시가총액 상위권 (Yahoo는 미국 티커를 접미사 없이 사용). 종목명은 네이버 한국어 뉴스 검색어로도 쓰인다.
-    // 4번째 인자는 섹터(업종).
+    // 미국 종목 (Yahoo는 미국 티커를 접미사 없이 사용). 종목명은 네이버 한국어 뉴스 검색어로도 쓰인다.
+    // 4번째 인자는 테마/섹터 — 대형주뿐 아니라 양자컴퓨팅·AI반도체 같은 인기 테마 대표주를 함께 담아
+    // 상단 요약에서 "어느 테마가 강세·주목받는지"를 보여준다.
     private static final List<StockRef> TOP_US_STOCKS = List.of(
-            new StockRef("애플", "AAPL", "애플 주가", "IT·하드웨어"),
-            new StockRef("엔비디아", "NVDA", "엔비디아 주가", "반도체"),
-            new StockRef("마이크로소프트", "MSFT", "마이크로소프트 주가", "소프트웨어"),
-            new StockRef("아마존", "AMZN", "아마존 주가", "소비재·유통"),
-            new StockRef("구글", "GOOGL", "구글 알파벳 주가", "인터넷·플랫폼"),
-            new StockRef("메타", "META", "메타 주가", "인터넷·플랫폼"),
-            new StockRef("테슬라", "TSLA", "테슬라 주가", "자동차"),
-            new StockRef("브로드컴", "AVGO", "브로드컴 주가", "반도체"),
-            new StockRef("일라이릴리", "LLY", "일라이릴리 주가", "바이오·제약"),
+            // 빅테크·플랫폼
+            new StockRef("애플", "AAPL", "애플 주가", "빅테크·플랫폼"),
+            new StockRef("마이크로소프트", "MSFT", "마이크로소프트 주가", "빅테크·플랫폼"),
+            new StockRef("구글", "GOOGL", "구글 알파벳 주가", "빅테크·플랫폼"),
+            new StockRef("메타", "META", "메타 주가", "빅테크·플랫폼"),
+            new StockRef("아마존", "AMZN", "아마존 주가", "빅테크·플랫폼"),
+            // AI·반도체
+            new StockRef("엔비디아", "NVDA", "엔비디아 주가", "AI·반도체"),
+            new StockRef("브로드컴", "AVGO", "브로드컴 주가", "AI·반도체"),
+            new StockRef("AMD", "AMD", "AMD 주가", "AI·반도체"),
+            // 양자컴퓨팅
+            new StockRef("아이온큐", "IONQ", "아이온큐 주가", "양자컴퓨팅"),
+            new StockRef("리게티", "RGTI", "리게티 양자 주가", "양자컴퓨팅"),
+            new StockRef("디웨이브", "QBTS", "디웨이브 양자 주가", "양자컴퓨팅"),
+            // 전기차·자율주행
+            new StockRef("테슬라", "TSLA", "테슬라 주가", "전기차·자율주행"),
+            // 비만·헬스케어
+            new StockRef("일라이릴리", "LLY", "일라이릴리 주가", "비만·헬스케어"),
+            // 금융
             new StockRef("JP모건", "JPM", "JP모건 주가", "금융")
     );
 

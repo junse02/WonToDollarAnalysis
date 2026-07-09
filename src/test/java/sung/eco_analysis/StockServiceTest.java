@@ -99,12 +99,14 @@ class StockServiceTest {
 
         List<StockQuote> stocks = stockService.getTopUsStocks();
 
-        assertThat(stocks).hasSize(10);
+        assertThat(stocks).hasSize(14);   // 대형주 + 테마 대표주(양자컴퓨팅·AI반도체 등)
         StockQuote first = stocks.get(0);
         assertThat(first.getSymbol()).isEqualTo("AAPL");   // 접미사 없는 미국 티커
         assertThat(first.getPrice()).isEqualTo(200.0);
         assertThat(first.getChangeAmount()).isEqualTo(5.0);
         assertThat(first.getHeadlines()).isNotEmpty();
+        // 양자컴퓨팅 테마 종목이 포함된다
+        assertThat(stocks).anyMatch(s -> "IONQ".equals(s.getSymbol()) && "양자컴퓨팅".equals(s.getSector()));
     }
 
     @Test
