@@ -69,7 +69,8 @@ class StockServiceTest {
                 eq(YahooChartResponse.class)))
                 .thenReturn(ResponseEntity.ok(chartResponse(70000.0, 69000.0)));
         when(naverNewsService.fetchNews(anyString(), anyInt()))
-                .thenReturn(List.of(news("신고가 경신"), news("호실적 기대")));
+                .thenReturn(new NaverNewsService.NewsSearch(
+                        List.of(news("신고가 경신"), news("호실적 기대")), 1234));
 
         List<StockQuote> stocks = stockService.getTopStocks();
 
@@ -81,6 +82,8 @@ class StockServiceTest {
         assertThat(first.isUp()).isTrue();
         assertThat(first.getChartData()).containsExactly(69000.0, 70000.0);
         assertThat(first.getHeadlines()).isNotEmpty();
+        assertThat(first.getSector()).isEqualTo("반도체");   // 섹터 매핑
+        assertThat(first.getNewsBuzz()).isEqualTo(1234);     // 관심도(전체 검색 건수)
     }
 
     @Test
@@ -92,7 +95,7 @@ class StockServiceTest {
                 .thenReturn(ResponseEntity.ok(chartResponse(200.0, 195.0)));
         // 미국 종목은 관련도순(sim) 경로를 사용
         when(naverNewsService.fetchNewsByRelevance(anyString(), anyInt()))
-                .thenReturn(List.of(news("신고가 경신")));
+                .thenReturn(new NaverNewsService.NewsSearch(List.of(news("신고가 경신")), 500));
 
         List<StockQuote> stocks = stockService.getTopUsStocks();
 
@@ -112,7 +115,7 @@ class StockServiceTest {
                 eq(YahooChartResponse.class)))
                 .thenThrow(new RuntimeException("yahoo down"));
         when(naverNewsService.fetchNews(anyString(), anyInt()))
-                .thenReturn(List.of(news("종목 관련 뉴스")));
+                .thenReturn(new NaverNewsService.NewsSearch(List.of(news("종목 관련 뉴스")), 42));
 
         List<StockQuote> stocks = stockService.getTopStocks();
 

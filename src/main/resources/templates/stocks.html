@@ -48,6 +48,68 @@
         시세를 일시적으로 불러오지 못했습니다. 잠시 후 새로고침해 주세요.
     </div>
 
+    <!-- 섹터별 강세 · 관심도 요약 -->
+    <div class="card mb-4" th:if="${sectorSummaryAvailable}">
+        <div class="card-header d-flex align-items-center">
+            <i class="bi bi-grid-1x2 me-2"></i>
+            <span class="fw-bold">섹터별 강세 · 관심도</span>
+            <span class="text-muted small ms-2">업종별 평균 등락률(강세)과 뉴스 언급량(관심도)</span>
+        </div>
+        <div class="card-body">
+            <!-- 한 줄 요약: 가장 강한 섹터 / 가장 주목받는 섹터 -->
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <span class="badge fs-6 fw-normal py-2 px-3"
+                      th:if="${topStrongSector != null}"
+                      th:classappend="${topStrongSector.up} ? 'bg-danger-subtle text-danger-emphasis' : 'bg-primary-subtle text-primary-emphasis'">
+                    <i class="bi bi-graph-up-arrow me-1"></i>가장 강한 섹터:
+                    <span class="fw-bold" th:text="${topStrongSector.sector}">반도체</span>
+                    <span th:text="'(' + (${topStrongSector.up} ? '+' : '') + ${#numbers.formatDecimal(topStrongSector.avgChangePercent, 1, 2)} + '%)'">(+0.0%)</span>
+                </span>
+                <span class="badge fs-6 fw-normal py-2 px-3 bg-warning-subtle text-warning-emphasis"
+                      th:if="${topPopularSector != null}">
+                    <i class="bi bi-fire me-1"></i>가장 주목받는 섹터:
+                    <span class="fw-bold" th:text="${topPopularSector.sector}">반도체</span>
+                    <span th:text="'(뉴스 ' + ${#numbers.formatInteger(topPopularSector.newsBuzz, 0, 'COMMA')} + '건)'">(뉴스 0건)</span>
+                </span>
+            </div>
+
+            <!-- 섹터 타일 (강세 순) -->
+            <div class="row g-2">
+                <div class="col-12 col-md-6 col-lg-4" th:each="sec : ${sectors}">
+                    <div class="border rounded p-2 h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="fw-bold text-truncate me-2">
+                                <span th:text="${sec.sector}">섹터</span>
+                                <span class="text-muted small" th:text="'(' + ${sec.stockCount} + '종목)'">(0종목)</span>
+                            </span>
+                            <span class="fw-bold flex-shrink-0"
+                                  th:if="${sec.hasPrice}"
+                                  th:classappend="${sec.up} ? 'text-danger' : 'text-primary'"
+                                  th:text="(${sec.up} ? '▲ ' : '▼ ') + (${sec.up} ? '+' : '') + ${#numbers.formatDecimal(sec.avgChangePercent, 1, 2)} + '%'">▲ +0.0%</span>
+                            <span class="text-muted flex-shrink-0" th:unless="${sec.hasPrice}">시세 없음</span>
+                        </div>
+                        <!-- 관심도 막대 (최대 섹터 대비 상대 길이) -->
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="progress flex-grow-1" style="height: 6px;">
+                                <div class="progress-bar bg-warning"
+                                     th:style="'width:' + ${maxBuzz > 0 ? (sec.newsBuzz * 100.0 / maxBuzz) : 0} + '%'"></div>
+                            </div>
+                            <span class="text-muted small flex-shrink-0"
+                                  th:text="${#numbers.formatInteger(sec.newsBuzz, 0, 'COMMA')} + '건'">0건</span>
+                            <span class="badge flex-shrink-0"
+                                  th:classappend="${sec.sentimentScore >= 2} ? 'bg-danger' : (${sec.sentimentScore <= -2} ? 'bg-primary' : 'bg-secondary')"
+                                  th:text="${sec.sentimentLabel}">중립</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <p class="text-muted small mb-0 mt-2">
+                <i class="bi bi-info-circle me-1"></i>
+                강세 = 섹터 소속 종목의 평균 등락률 · 관심도 = 종목 뉴스의 네이버 검색 건수 합계 (막대는 최다 섹터 기준 상대값)
+            </p>
+        </div>
+    </div>
+
     <!-- 감성 예측 적중률 -->
     <div class="alert d-flex align-items-center mb-3"
          th:classappend="${accuracyAvailable} ? 'alert-info' : 'alert-secondary'" role="alert">

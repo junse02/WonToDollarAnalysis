@@ -33,8 +33,8 @@ class StockSnapshotServiceTest {
     }
 
     private StockQuote quote(String symbol, double price, int sentimentScore) {
-        return new StockQuote("삼성전자", symbol, price, 0.0, 0.0,
-                List.of(), List.of(), "라벨", sentimentScore, List.of());
+        return new StockQuote("삼성전자", symbol, "반도체", price, 0.0, 0.0,
+                List.of(), List.of(), "라벨", sentimentScore, List.of(), 0);
     }
 
     // 호재 우세 예측 후 이후 거래일 종가 상승 -> matched=true

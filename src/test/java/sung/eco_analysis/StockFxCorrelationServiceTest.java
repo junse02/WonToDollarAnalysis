@@ -49,8 +49,8 @@ class StockFxCorrelationServiceTest {
     }
 
     private StockQuote quote(List<String> labels, List<Double> closes) {
-        return new StockQuote("삼성전자", "005930.KS", closes.get(closes.size() - 1), 0.0, 0.0,
-                labels, closes, "라벨", 0, List.of());
+        return new StockQuote("삼성전자", "005930.KS", "반도체", closes.get(closes.size() - 1), 0.0, 0.0,
+                labels, closes, "라벨", 0, List.of(), 0);
     }
 
     @Test

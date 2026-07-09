@@ -4,14 +4,17 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import sung.eco_analysis.dto.SectorSummary;
 import sung.eco_analysis.dto.StockCorrelation;
 import sung.eco_analysis.dto.StockQuote;
+import sung.eco_analysis.service.SectorSummaryService;
 import sung.eco_analysis.service.StockFxCorrelationService;
 import sung.eco_analysis.service.StockService;
 import sung.eco_analysis.service.StockSnapshotService;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -23,6 +26,7 @@ public class StockWebController {
     private final StockService stockService;
     private final StockSnapshotService stockSnapshotService;
     private final StockFxCorrelationService stockFxCorrelationService;
+    private final SectorSummaryService sectorSummaryService;
 
     @GetMapping("/stocks")
     public String stocks(Model model) {
@@ -61,6 +65,19 @@ public class StockWebController {
             model.addAttribute("correlations", List.of());
             model.addAttribute("anyCorrelation", false);
         }
+
+        // 섹터별 강세·관심도 요약 (상단 카드)
+        List<SectorSummary> sectors = sectorSummaryService.summarize(stocks);  // 강세순 정렬
+        SectorSummary topStrong = sectors.stream()
+                .filter(SectorSummary::isHasPrice).findFirst().orElse(null);  // 강세 1위
+        SectorSummary topPopular = sectors.stream()
+                .max(Comparator.comparingLong(SectorSummary::getNewsBuzz)).orElse(null);  // 관심 1위
+        long maxBuzz = sectors.stream().mapToLong(SectorSummary::getNewsBuzz).max().orElse(0);
+        model.addAttribute("sectors", sectors);
+        model.addAttribute("sectorSummaryAvailable", !sectors.isEmpty());
+        model.addAttribute("topStrongSector", topStrong);
+        model.addAttribute("topPopularSector", (maxBuzz > 0) ? topPopular : null);
+        model.addAttribute("maxBuzz", maxBuzz);
 
         // 종목별 감성 점수 추이 (최근 30일 스냅샷). 템플릿이 심볼로 매칭하므로 전체 전달.
         model.addAttribute("sentimentTrends", stockSnapshotService.recentSentimentTrends(30));

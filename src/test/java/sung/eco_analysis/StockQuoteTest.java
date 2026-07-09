@@ -10,8 +10,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class StockQuoteTest {
 
     private StockQuote quote(Double changePercent, int sentimentScore) {
-        return new StockQuote("삼성전자", "005930.KS", 70000.0, 0.0, changePercent,
-                List.of(), List.of(), "라벨", sentimentScore, List.of());
+        return new StockQuote("삼성전자", "005930.KS", "반도체", 70000.0, 0.0, changePercent,
+                List.of(), List.of(), "라벨", sentimentScore, List.of(), 0);
     }
 
     @Test

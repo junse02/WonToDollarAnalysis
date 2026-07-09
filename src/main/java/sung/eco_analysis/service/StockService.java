@@ -38,31 +38,33 @@ public class StockService {
     private static final int HEADLINES_SHOWN = 3;
 
     // 분석 대상 종목 (시가총액 상위권, Yahoo 심볼). 순위는 변동되므로 필요 시 갱신.
+    // 3번째 인자는 섹터(업종) — 페이지 상단 섹터별 강세·관심도 요약에 쓰인다.
     private static final List<StockRef> TOP_STOCKS = List.of(
-            new StockRef("삼성전자", "005930.KS"),
-            new StockRef("SK하이닉스", "000660.KS"),
-            new StockRef("LG에너지솔루션", "373220.KS"),
-            new StockRef("삼성바이오로직스", "207940.KS"),
-            new StockRef("현대차", "005380.KS"),
-            new StockRef("기아", "000270.KS"),
-            new StockRef("셀트리온", "068270.KS"),
-            new StockRef("KB금융", "105560.KS"),
-            new StockRef("네이버", "035420.KS"),
-            new StockRef("신한지주", "055550.KS")
+            new StockRef("삼성전자", "005930.KS", "반도체"),
+            new StockRef("SK하이닉스", "000660.KS", "반도체"),
+            new StockRef("LG에너지솔루션", "373220.KS", "2차전지"),
+            new StockRef("삼성바이오로직스", "207940.KS", "바이오·제약"),
+            new StockRef("현대차", "005380.KS", "자동차"),
+            new StockRef("기아", "000270.KS", "자동차"),
+            new StockRef("셀트리온", "068270.KS", "바이오·제약"),
+            new StockRef("KB금융", "105560.KS", "금융"),
+            new StockRef("네이버", "035420.KS", "인터넷·플랫폼"),
+            new StockRef("신한지주", "055550.KS", "금융")
     );
 
     // 미국 시가총액 상위권 (Yahoo는 미국 티커를 접미사 없이 사용). 종목명은 네이버 한국어 뉴스 검색어로도 쓰인다.
+    // 4번째 인자는 섹터(업종).
     private static final List<StockRef> TOP_US_STOCKS = List.of(
-            new StockRef("애플", "AAPL", "애플 주가"),
-            new StockRef("엔비디아", "NVDA", "엔비디아 주가"),
-            new StockRef("마이크로소프트", "MSFT", "마이크로소프트 주가"),
-            new StockRef("아마존", "AMZN", "아마존 주가"),
-            new StockRef("구글", "GOOGL", "구글 알파벳 주가"),
-            new StockRef("메타", "META", "메타 주가"),
-            new StockRef("테슬라", "TSLA", "테슬라 주가"),
-            new StockRef("브로드컴", "AVGO", "브로드컴 주가"),
-            new StockRef("일라이릴리", "LLY", "일라이릴리 주가"),
-            new StockRef("JP모건", "JPM", "JP모건 주가")
+            new StockRef("애플", "AAPL", "애플 주가", "IT·하드웨어"),
+            new StockRef("엔비디아", "NVDA", "엔비디아 주가", "반도체"),
+            new StockRef("마이크로소프트", "MSFT", "마이크로소프트 주가", "소프트웨어"),
+            new StockRef("아마존", "AMZN", "아마존 주가", "소비재·유통"),
+            new StockRef("구글", "GOOGL", "구글 알파벳 주가", "인터넷·플랫폼"),
+            new StockRef("메타", "META", "메타 주가", "인터넷·플랫폼"),
+            new StockRef("테슬라", "TSLA", "테슬라 주가", "자동차"),
+            new StockRef("브로드컴", "AVGO", "브로드컴 주가", "반도체"),
+            new StockRef("일라이릴리", "LLY", "일라이릴리 주가", "바이오·제약"),
+            new StockRef("JP모건", "JPM", "JP모건 주가", "금융")
     );
 
     public List<StockQuote> getTopStocks() {
@@ -85,9 +87,11 @@ public class StockService {
         YahooChartResponse.Result chart = fetchChart(ref.symbol());
 
         // 뉴스 + 감성 (국내: 종목명·최신순 / 미국: "종목명 주가"·관련도순으로 종목 집중 기사 우선)
-        List<NaverNewsItem> news = ref.relevanceSort()
+        NaverNewsService.NewsSearch search = ref.relevanceSort()
                 ? naverNewsService.fetchNewsByRelevance(ref.newsQuery(), NEWS_PER_STOCK)
                 : naverNewsService.fetchNews(ref.newsQuery(), NEWS_PER_STOCK);
+        List<NaverNewsItem> news = search.items();
+        int newsBuzz = search.total();  // 섹터 관심도 지표 (검색어 전체 매칭 건수)
         StockSentimentService.Result sentiment = stockSentimentService.analyze(news);
         List<StockQuote.NewsHeadline> headlines = news.stream()
                 .limit(HEADLINES_SHOWN)
@@ -98,8 +102,8 @@ public class StockService {
 
         if (chart == null || chart.getMeta() == null || chart.getMeta().getRegularMarketPrice() == null) {
             log.warn("종목 시세 조회 실패: {} ({})", ref.name(), ref.symbol());
-            return new StockQuote(ref.name(), ref.symbol(), null, null, null,
-                    List.of(), List.of(), sentiment.label(), sentiment.score(), headlines);
+            return new StockQuote(ref.name(), ref.symbol(), ref.sector(), null, null, null,
+                    List.of(), List.of(), sentiment.label(), sentiment.score(), headlines, newsBuzz);
         }
 
         List<String> labels = new ArrayList<>();
@@ -113,8 +117,8 @@ public class StockService {
         Double changeAmount = (prevClose != null) ? price - prevClose : null;
         Double changePercent = (prevClose != null && prevClose != 0) ? (changeAmount / prevClose) * 100 : null;
 
-        return new StockQuote(ref.name(), ref.symbol(), price, changeAmount, changePercent,
-                labels, closes, sentiment.label(), sentiment.score(), headlines);
+        return new StockQuote(ref.name(), ref.symbol(), ref.sector(), price, changeAmount, changePercent,
+                labels, closes, sentiment.label(), sentiment.score(), headlines, newsBuzz);
     }
 
     // 휴장일(null 종가)은 건너뛰고 라벨·종가 시계열을 구성
@@ -158,8 +162,13 @@ public class StockService {
 
     // newsQuery: 네이버 뉴스 검색어. 국내는 종목명 그대로(최신순), 미국은 "애플 주가"처럼 한정 + 관련도순.
     // relevanceSort=true면 sort=sim으로 조회해 종목 자체에 집중한 기사를 상위로 올린다.
-    private record StockRef(String name, String symbol, String newsQuery, boolean relevanceSort) {
-        StockRef(String name, String symbol) { this(name, symbol, name, false); }
-        StockRef(String name, String symbol, String newsQuery) { this(name, symbol, newsQuery, true); }
+    // sector: 페이지 상단 섹터 요약용 업종명.
+    private record StockRef(String name, String symbol, String newsQuery, boolean relevanceSort, String sector) {
+        // 국내: 종목명 그대로 검색(최신순)
+        StockRef(String name, String symbol, String sector) { this(name, symbol, name, false, sector); }
+        // 미국: 한정 검색어 + 관련도순
+        StockRef(String name, String symbol, String newsQuery, String sector) {
+            this(name, symbol, newsQuery, true, sector);
+        }
     }
 }
