@@ -111,7 +111,7 @@ public class StockService {
     private StockQuote buildQuote(StockRef ref) {
         YahooChartResponse.Result chart = fetchChart(ref.symbol());
 
-        // 뉴스 + 감성 (국내: 종목명·최신순 / 미국: "종목명 주가"·관련도순으로 종목 집중 기사 우선)
+        // 뉴스 + 감성 (국내: "종목명 주가"·최신순 / 미국: "종목명 주가"·관련도순으로 종목 집중 기사 우선)
         NaverNewsService.NewsSearch search = ref.relevanceSort()
                 ? naverNewsService.fetchNewsByRelevance(ref.newsQuery(), NEWS_PER_STOCK)
                 : naverNewsService.fetchNews(ref.newsQuery(), NEWS_PER_STOCK);
@@ -185,12 +185,13 @@ public class StockService {
         return null;
     }
 
-    // newsQuery: 네이버 뉴스 검색어. 국내는 종목명 그대로(최신순), 미국은 "애플 주가"처럼 한정 + 관련도순.
-    // relevanceSort=true면 sort=sim으로 조회해 종목 자체에 집중한 기사를 상위로 올린다.
+    // newsQuery: 네이버 뉴스 검색어. 국내·미국 모두 "종목명 주가"로 한정해 종목과 무관한
+    // 기사(포털·메신저 등 동명 노이즈)를 걸러 관심도(전체 검색 건수) 정확도를 높인다.
+    // 정렬은 국내=최신순(date), 미국=관련도순(sim, relevanceSort=true).
     // sector: 페이지 상단 섹터 요약용 업종명.
     private record StockRef(String name, String symbol, String newsQuery, boolean relevanceSort, String sector) {
-        // 국내: 종목명 그대로 검색(최신순)
-        StockRef(String name, String symbol, String sector) { this(name, symbol, name, false, sector); }
+        // 국내: "종목명 주가" 검색 + 최신순
+        StockRef(String name, String symbol, String sector) { this(name, symbol, name + " 주가", false, sector); }
         // 미국: 한정 검색어 + 관련도순
         StockRef(String name, String symbol, String newsQuery, String sector) {
             this(name, symbol, newsQuery, true, sector);
