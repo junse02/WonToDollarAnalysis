@@ -74,7 +74,7 @@ class StockServiceTest {
 
         List<StockQuote> stocks = stockService.getTopStocks();
 
-        assertThat(stocks).hasSize(10);  // top10
+        assertThat(stocks).hasSize(16);  // 대형주 + 테마 대표주(반도체·2차전지·방산·원자력 등)
         StockQuote first = stocks.get(0);
         assertThat(first.isAvailable()).isTrue();
         assertThat(first.getPrice()).isEqualTo(70000.0);
@@ -121,7 +121,7 @@ class StockServiceTest {
 
         List<StockQuote> stocks = stockService.getTopStocks();
 
-        assertThat(stocks).hasSize(10);
+        assertThat(stocks).hasSize(16);
         assertThat(stocks.get(0).isAvailable()).isFalse();      // 시세 실패
         assertThat(stocks.get(0).getPrice()).isNull();
         assertThat(stocks.get(0).getHeadlines()).isNotEmpty();  // 뉴스는 유지

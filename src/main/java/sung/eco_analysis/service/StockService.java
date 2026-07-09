@@ -37,18 +37,32 @@ public class StockService {
     private static final int NEWS_PER_STOCK = 20;
     private static final int HEADLINES_SHOWN = 3;
 
-    // 분석 대상 종목 (시가총액 상위권, Yahoo 심볼). 순위는 변동되므로 필요 시 갱신.
-    // 3번째 인자는 섹터(업종) — 페이지 상단 섹터별 강세·관심도 요약에 쓰인다.
+    // 국내 종목 (Yahoo 심볼, 코스피 .KS / 코스닥 .KQ). 3번째 인자는 테마/섹터 —
+    // 대형주뿐 아니라 원자력·방산, 2차전지 소재 같은 인기 테마 대표주를 함께 담아
+    // 상단 요약에서 "어느 테마가 강세·주목받는지"를 보여준다. 순위는 변동되므로 필요 시 갱신.
     private static final List<StockRef> TOP_STOCKS = List.of(
+            // 반도체 (메모리·HBM 장비)
             new StockRef("삼성전자", "005930.KS", "반도체"),
             new StockRef("SK하이닉스", "000660.KS", "반도체"),
+            new StockRef("한미반도체", "042700.KS", "반도체"),
+            // 2차전지 (셀·양극재)
             new StockRef("LG에너지솔루션", "373220.KS", "2차전지"),
+            new StockRef("에코프로비엠", "247540.KQ", "2차전지"),
+            // 바이오·제약
             new StockRef("삼성바이오로직스", "207940.KS", "바이오·제약"),
+            new StockRef("셀트리온", "068270.KS", "바이오·제약"),
+            new StockRef("알테오젠", "196170.KQ", "바이오·제약"),
+            // 자동차
             new StockRef("현대차", "005380.KS", "자동차"),
             new StockRef("기아", "000270.KS", "자동차"),
-            new StockRef("셀트리온", "068270.KS", "바이오·제약"),
-            new StockRef("KB금융", "105560.KS", "금융"),
+            // 방산·원자력
+            new StockRef("한화에어로스페이스", "012450.KS", "방산·원자력"),
+            new StockRef("두산에너빌리티", "034020.KS", "방산·원자력"),
+            // 인터넷·플랫폼
             new StockRef("네이버", "035420.KS", "인터넷·플랫폼"),
+            new StockRef("카카오", "035720.KS", "인터넷·플랫폼"),
+            // 금융
+            new StockRef("KB금융", "105560.KS", "금융"),
             new StockRef("신한지주", "055550.KS", "금융")
     );
 
